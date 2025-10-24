@@ -11,27 +11,27 @@ export interface RedditFetchParams extends FetchParams {
    * - 'comments': User's comments
    */
   type?: 'saved' | 'submitted' | 'comments';
-  
+
   /**
    * Subreddit to fetch from (optional, for subreddit-specific queries)
    */
   subreddit?: string;
-  
+
   /**
    * Sorting method
    */
   sort?: 'hot' | 'new' | 'top' | 'controversial';
-  
+
   /**
    * Time period for 'top' and 'controversial' sorts
    */
   time?: 'hour' | 'day' | 'week' | 'month' | 'year' | 'all';
-  
+
   /**
    * Number of items per page (max 100)
    */
   limit?: number;
-  
+
   /**
    * Pagination cursor (after/before)
    */
@@ -97,4 +97,3 @@ export interface RedditComment {
   link_permalink?: string;
   parent_id: string;
 }
-

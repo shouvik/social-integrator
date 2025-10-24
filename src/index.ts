@@ -23,6 +23,5 @@ export {
   RateLimitError,
   NetworkError,
   NetworkTimeoutError,
-  CircuitBreakerOpenError
+  CircuitBreakerOpenError,
 } from './utils/errors';
-

@@ -23,19 +23,18 @@ export interface HttpResponse<T = unknown> {
   data: T;
   status: number;
   headers: Record<string, string>;
-  cached?: boolean;                    // True if returned from ETag cache
+  cached?: boolean; // True if returned from ETag cache
 }
 
 export interface RateLimitConfig {
-  qps: number;                         // Queries per second
-  concurrency: number;                 // Max concurrent requests
-  burst?: number;                      // Burst allowance
+  qps: number; // Queries per second
+  concurrency: number; // Max concurrent requests
+  burst?: number; // Burst allowance
 }
 
 export interface RetryConfig {
   maxRetries: number;
-  baseDelay: number;                   // milliseconds
+  baseDelay: number; // milliseconds
   maxDelay: number;
   retryableStatusCodes: number[];
 }
-

@@ -6,10 +6,10 @@ import type { RSSFetchParams } from './types';
 
 /**
  * RSS feed connector (no OAuth required)
- * 
+ *
  * Fetches and parses RSS/Atom feeds from any public URL.
  * Supports ETag caching to minimize bandwidth usage.
- * 
+ *
  * @example
  * ```typescript
  * const sdk = await ConnectorSDK.init(config);
@@ -34,7 +34,7 @@ export class RSSConnector extends BaseConnector {
 
   /**
    * Fetches and parses an RSS feed
-   * 
+   *
    * @param userId - User identifier (for tracking/caching)
    * @param params - RSS-specific fetch parameters (feedUrl required)
    * @returns Array of normalized items
@@ -45,22 +45,22 @@ export class RSSConnector extends BaseConnector {
     }
 
     const limit = params.limit ?? 50;
-    
+
     // Fetch feed with ETag caching (RSS feeds often support ETags)
     const response = await this.deps.http.request<string>({
       url: params.feedUrl,
       method: 'GET',
       headers: {
         'User-Agent': 'oauth-connector-sdk/1.0',
-        'Accept': 'application/rss+xml, application/atom+xml, application/xml, text/xml',
+        Accept: 'application/rss+xml, application/atom+xml, application/xml, text/xml',
       },
-      etagKey: { 
-        userId, 
-        provider: this.name, 
-        resource: this.hashFeedUrl(params.feedUrl) 
+      etagKey: {
+        userId,
+        provider: this.name,
+        resource: this.hashFeedUrl(params.feedUrl),
       },
     });
-    
+
     // Parse RSS/Atom feed
     let feed;
     try {
@@ -73,30 +73,30 @@ export class RSSConnector extends BaseConnector {
       });
       throw new Error(`Failed to parse RSS feed: ${error.message}`);
     }
-    
+
     if (!feed.items || feed.items.length === 0) {
       return [];
     }
-    
+
     // Limit items
     const rawItems = feed.items.slice(0, limit);
-    
+
     // Normalize using the centralized normalizer
     const normalized = this.deps.normalizer.normalize('rss', userId, rawItems);
-    
+
     this.deps.logger.info('RSS fetch completed', {
       userId,
       feedUrl: params.feedUrl,
       itemCount: normalized.length,
       feedTitle: feed.title,
     });
-    
+
     return normalized;
   }
 
   /**
    * RSS doesn't require OAuth - return empty auth URL
-   * 
+   *
    * @param userId - User identifier
    * @param opts - Connect options (unused for RSS)
    * @returns Empty string (no OAuth needed)
@@ -108,14 +108,17 @@ export class RSSConnector extends BaseConnector {
 
   /**
    * RSS doesn't require OAuth - return dummy token set
-   * 
+   *
    * @param userId - User identifier
    * @param params - Callback parameters (unused for RSS)
    * @returns Dummy token set
    */
   async handleCallback(userId: string, params: URLSearchParams): Promise<any> {
-    this.deps.logger.info('RSS connector does not require OAuth callback', { userId, params: params.toString() });
-    
+    this.deps.logger.info('RSS connector does not require OAuth callback', {
+      userId,
+      params: params.toString(),
+    });
+
     // Return minimal token set (RSS doesn't use tokens)
     return {
       accessToken: '',
@@ -126,7 +129,7 @@ export class RSSConnector extends BaseConnector {
 
   /**
    * Disconnects user (clears cached feed data)
-   * 
+   *
    * @param userId - User identifier
    */
   async disconnect(userId: string): Promise<void> {
@@ -154,10 +157,6 @@ export class RSSConnector extends BaseConnector {
    * Uses SHA-256 to prevent collisions
    */
   private hashFeedUrl(url: string): string {
-    return crypto.createHash('sha256')
-      .update(url)
-      .digest('hex')
-      .substring(0, 16); // Use first 16 hex chars for compact cache key
+    return crypto.createHash('sha256').update(url).digest('hex').substring(0, 16); // Use first 16 hex chars for compact cache key
   }
 }
-

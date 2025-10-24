@@ -12,42 +12,42 @@ export interface TwitterFetchParams extends FetchParams {
    * - 'search': Search tweets
    */
   type?: 'timeline' | 'mentions' | 'tweets' | 'search';
-  
+
   /**
    * Search query (required if type is 'search')
    */
   query?: string;
-  
+
   /**
    * User ID to fetch tweets from (optional, defaults to authenticated user)
    */
   userId?: string;
-  
+
   /**
    * Maximum number of tweets (1-100 for v2 API)
    */
   maxResults?: number;
-  
+
   /**
    * Pagination token
    */
   paginationToken?: string;
-  
+
   /**
    * Tweet fields to include
    */
   tweetFields?: string[];
-  
+
   /**
    * User fields to include
    */
   userFields?: string[];
-  
+
   /**
    * Exclude retweets
    */
   excludeRetweets?: boolean;
-  
+
   /**
    * Exclude replies
    */
@@ -149,4 +149,3 @@ export interface TwitterMedia {
   width?: number;
   height?: number;
 }
-

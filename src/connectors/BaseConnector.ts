@@ -56,11 +56,26 @@ export abstract class BaseConnector implements Connector {
 
   /**
    * Default disconnect implementation
+   * CRITICAL FIX: Include expired tokens to ensure cleanup
    */
   async disconnect(userId: string): Promise<void> {
-    const token = await this.deps.tokens.getToken(userId, this.name);
+    // Include expired tokens to ensure we clean up all stored credentials
+    const token = await this.deps.tokens.getToken(userId, this.name, { includeExpired: true });
     if (token) {
-      await this.deps.auth.revokeToken(this.name, token.accessToken);
+      // Only attempt revocation if token is not expired
+      if (token.expiresAt && new Date(token.expiresAt) > new Date()) {
+        try {
+          await this.deps.auth.revokeToken(this.name, token.accessToken);
+        } catch (error) {
+          // Log revocation failure but continue with deletion
+          this.deps.logger.warn('Token revocation failed', {
+            provider: this.name,
+            userId,
+            error: (error as Error).message,
+          });
+        }
+      }
+      // Always delete from storage, even if expired or revocation failed
       await this.deps.tokens.deleteToken(userId, this.name);
     }
     this.deps.logger.info('Disconnected', { provider: this.name, userId });

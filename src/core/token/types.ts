@@ -8,7 +8,7 @@ export interface TokenSet {
   expiresAt?: Date;
   scope?: string;
   tokenType?: string;
-  idToken?: string;                    // For OIDC
+  idToken?: string; // For OIDC
 }
 
 export interface StoredToken {
@@ -27,8 +27,7 @@ export interface TokenStoreConfig {
     key: string;
     algorithm: 'aes-256-gcm';
   };
-  ttl?: number;                           // Default TTL in seconds
-  preRefreshMarginMinutes?: number;       // Token refresh before expiry (default: 5)
-  expiredTokenBufferMinutes?: number;     // Keep expired tokens for refresh (default: 5)
+  ttl?: number; // Default TTL in seconds
+  preRefreshMarginMinutes?: number; // Token refresh before expiry (default: 5)
+  expiredTokenBufferMinutes?: number; // Keep expired tokens for refresh (default: 5)
 }
-

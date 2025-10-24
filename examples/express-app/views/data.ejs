@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= provider.charAt(0).toUpperCase() + provider.slice(1) %> Data</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 2rem;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 20px;
+      padding: 3rem;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+    h1 {
+      color: #2d3748;
+      margin-bottom: 0.5rem;
+      font-size: 2.5rem;
+    }
+    .subtitle {
+      color: #718096;
+      margin-bottom: 2rem;
+    }
+    .actions {
+      margin-bottom: 2rem;
+      display: flex;
+      gap: 1rem;
+    }
+    .btn {
+      padding: 0.75rem 1.5rem;
+      background: #667eea;
+      color: white;
+      text-decoration: none;
+      border-radius: 8px;
+      font-weight: 600;
+      transition: background 0.3s;
+      border: none;
+      cursor: pointer;
+    }
+    .btn:hover {
+      background: #5568d3;
+    }
+    .btn-secondary {
+      background: #e2e8f0;
+      color: #2d3748;
+    }
+    .btn-secondary:hover {
+      background: #cbd5e0;
+    }
+    .items {
+      display: grid;
+      gap: 1rem;
+    }
+    .item {
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 1.5rem;
+      transition: all 0.3s;
+    }
+    .item:hover {
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      border-color: #667eea;
+    }
+    .item h3 {
+      color: #2d3748;
+      margin-bottom: 0.5rem;
+      font-size: 1.25rem;
+    }
+    .item p {
+      color: #4a5568;
+      line-height: 1.6;
+      margin-bottom: 0.5rem;
+    }
+    .item-meta {
+      color: #718096;
+      font-size: 0.875rem;
+      margin-top: 1rem;
+      padding-top: 1rem;
+      border-top: 1px solid #e2e8f0;
+    }
+    .item-link {
+      color: #667eea;
+      text-decoration: none;
+      font-weight: 500;
+    }
+    .item-link:hover {
+      text-decoration: underline;
+    }
+    .empty {
+      text-align: center;
+      padding: 3rem;
+      color: #718096;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>📊 <%= provider.charAt(0).toUpperCase() + provider.slice(1) %> Data</h1>
+    <p class="subtitle">Fetched <%= data.length %> items from <%= provider %></p>
+    
+    <div class="actions">
+      <a href="/?session=<%= session.userId %>" class="btn btn-secondary">← Back to Home</a>
+      <button onclick="disconnect()" class="btn">Disconnect</button>
+    </div>
+    
+    <div class="items">
+      <% if (data.length === 0) { %>
+        <div class="empty">
+          <p>No items found. Try connecting to the provider or adjusting your query.</p>
+        </div>
+      <% } else { %>
+        <% data.forEach(item => { %>
+          <div class="item">
+            <% if (item.title) { %>
+              <h3><%= item.title %></h3>
+            <% } %>
+            <% if (item.bodyText) { %>
+              <p><%= item.bodyText.substring(0, 200) %><%= item.bodyText.length > 200 ? '...' : '' %></p>
+            <% } %>
+            <% if (item.url) { %>
+              <a href="<%= item.url %>" target="_blank" class="item-link">View original →</a>
+            <% } %>
+            <div class="item-meta">
+              <% if (item.author) { %>
+                <strong>Author:</strong> <%= item.author %> • 
+              <% } %>
+              <% if (item.publishedAt) { %>
+                <strong>Published:</strong> <%= new Date(item.publishedAt).toLocaleDateString() %>
+              <% } %>
+              <% if (item.metadata) { %>
+                <br><strong>Metadata:</strong> <%= JSON.stringify(item.metadata).substring(0, 100) %>...
+              <% } %>
+            </div>
+          </div>
+        <% }); %>
+      <% } %>
+    </div>
+  </div>
+  
+  <script>
+    async function disconnect() {
+      if (!confirm('Are you sure you want to disconnect from <%= provider %>?')) {
+        return;
+      }
+      
+      try {
+        const response = await fetch('/disconnect/<%= provider %>?session=<%= session.userId %>', {
+          method: 'POST'
+        });
+        
+        if (response.ok) {
+          alert('Disconnected successfully!');
+          window.location.href = '/?session=<%= session.userId %>';
+        } else {
+          alert('Failed to disconnect');
+        }
+      } catch (error) {
+        alert('Error: ' + error.message);
+      }
+    }
+  </script>
+</body>
+</html>
+

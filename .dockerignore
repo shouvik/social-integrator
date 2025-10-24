@@ -1,0 +1,17 @@
+node_modules
+dist
+tests
+*.log
+.env
+.git
+.gitignore
+docs
+*.md
+.eslintrc.js
+.prettierrc
+vitest.config.ts
+coverage
+.vscode
+.idea
+*.backup
+

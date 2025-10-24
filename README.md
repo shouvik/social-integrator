@@ -22,24 +22,24 @@ const sdk = await ConnectorSDK.init({
     backend: 'memory', // or 'redis', 'postgres'
     encryption: {
       key: process.env.ENCRYPTION_KEY, // 32-byte hex string
-      algorithm: 'aes-256-gcm'
+      algorithm: 'aes-256-gcm',
     },
-    expiredTokenBufferMinutes: 5
+    expiredTokenBufferMinutes: 5,
   },
   http: {
     retry: {
       maxRetries: 3,
       baseDelay: 1000,
       maxDelay: 10000,
-      retryableStatusCodes: [429, 500, 502, 503, 504]
-    }
+      retryableStatusCodes: [429, 500, 502, 503, 504],
+    },
   },
   rateLimits: {
     github: { qps: 5000 / 3600, concurrency: 10 },
     google: { qps: 10000 / 60, concurrency: 20 },
     reddit: { qps: 60 / 60, concurrency: 5 },
     x: { qps: 300 / 900, concurrency: 5 },
-    rss: { qps: 100, concurrency: 10 }
+    rss: { qps: 100, concurrency: 10 },
   },
   providers: {
     github: {
@@ -49,17 +49,17 @@ const sdk = await ConnectorSDK.init({
       tokenEndpoint: 'https://github.com/login/oauth/access_token',
       scopes: ['user', 'repo'],
       redirectUri: 'http://localhost:3000/callback/github',
-      usePKCE: true
-    }
+      usePKCE: true,
+    },
   },
   metrics: {
     enabled: true,
-    port: 9090
+    port: 9090,
   },
   logging: {
     level: 'info',
-    format: 'json'
-  }
+    format: 'json',
+  },
 });
 
 // 1. Connect user (OAuth flow)
@@ -71,9 +71,9 @@ const params = new URLSearchParams(callbackUrl.search);
 await sdk.handleCallback('github', 'user123', params);
 
 // 3. Fetch data (auto-refreshes expired tokens)
-const items = await sdk.fetch('github', 'user123', { 
+const items = await sdk.fetch('github', 'user123', {
   type: 'starred',
-  limit: 50 
+  limit: 50,
 });
 
 console.log(items);
@@ -83,6 +83,7 @@ console.log(items);
 ## ✨ Features
 
 ### Core Capabilities
+
 - ✅ **Single OAuth Engine** - OAuth2/OIDC with PKCE for all providers
 - ✅ **Unified Token Management** - Centralized storage with encryption
 - ✅ **Auto Token Refresh** - Automatic refresh before expiry
@@ -92,7 +93,6 @@ console.log(items);
 - ✅ **Circuit Breaker** - Automatic failure isolation
 - ✅ **Normalized Schema** - Consistent data format across all providers
 - ✅ **Observability** - Prometheus metrics, structured logging, request tracing
-
 
 ## 🧪 Testing
 
@@ -187,13 +187,17 @@ POSTGRES_URL=postgresql://user:pass@localhost:5432/oauth_sdk
 ### Token Store Backends
 
 **Memory** (Development)
+
 ```typescript
-tokenStore: { backend: 'memory' }
+tokenStore: {
+  backend: 'memory';
+}
 ```
 
 **Redis** (Production - Cache)
+
 ```typescript
-tokenStore: { 
+tokenStore: {
   backend: 'redis',
   url: process.env.REDIS_URL,
   encryption: { key: process.env.ENCRYPTION_KEY, algorithm: 'aes-256-gcm' }
@@ -201,8 +205,9 @@ tokenStore: {
 ```
 
 **PostgreSQL** (Production - Persistence)
+
 ```typescript
-tokenStore: { 
+tokenStore: {
   backend: 'postgres',
   url: process.env.POSTGRES_URL,
   encryption: { key: process.env.ENCRYPTION_KEY, algorithm: 'aes-256-gcm' }
@@ -211,11 +216,29 @@ tokenStore: {
 
 ## 📚 Documentation
 
+### Core Documentation
+
 - **[PRD](docs/data-connector-prd.md)** - Product requirements and scope
 - **[HLD](docs/high-level-design.md)** - High-level architecture
 - **[LLD](docs/low-level-design.md)** - Detailed implementation guide
-- **[Configuration](docs/configuration.md)** - Configuration options and examples
+
+### Configuration & Setup
+
+- **[Configuration Guide](docs/configuration.md)** - Complete configuration reference with hardening guidance
+- **[Provider Matrix](docs/provider-matrix.md)** - OAuth quirks, rate limits, and provider-specific gotchas
+- **[Normalized Schema](docs/normalized-schema.md)** - Unified data format across all providers
+
+### Operations & Troubleshooting
+
+- **[Observability](docs/observability.md)** - Prometheus metrics, OpenTelemetry tracing, structured logging
 - **[Troubleshooting](docs/troubleshooting.md)** - Common issues and solutions
+- **[FAQ](docs/faq.md)** - Frequently asked questions
+
+### Security & Releases
+
+- **[Threat Model](docs/threat-model.md)** - Security controls, key rotation, outage posture
+- **[RELEASING.md](RELEASING.md)** - Release process and semantic versioning
+- **[CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)** - Community guidelines
 
 ## 🛠️ Development
 
@@ -280,6 +303,64 @@ src/
 
 MIT
 
+## 🚀 Quick Start Example
+
+```bash
+# Run the example app
+npm run example
+
+# This will:
+# 1. Start Redis in Docker
+# 2. Print OAuth URLs for all configured providers
+# 3. Instructions for testing OAuth flows
+
+# Start example server
+cd examples/express-app && npm run dev
+```
+
+Visit the printed URLs to test OAuth flows with your providers.
+
 ## 👥 Contributing
 
-See [AGENTS.md](AGENTS.md) for development guidelines and [docs/](docs/) for design documentation.
+We welcome contributions! Please read:
+
+- **[CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)** - Community guidelines
+- **[RELEASING.md](RELEASING.md)** - Release process
+- **[docs/](docs/)** - Design documentation
+
+### Development Workflow
+
+```bash
+# Install dependencies
+npm ci
+
+# Run tests
+npm test
+
+# Run with coverage (85% required)
+npm run coverage
+
+# Lint and format
+npm run lint
+npm run format
+
+# Type check
+npm run typecheck
+
+# Build
+npm run build
+```
+
+### Pre-commit Hooks
+
+We use Husky + lint-staged to run quality checks before commit:
+
+- ESLint fixes
+- Prettier formatting
+- Related tests
+
+```bash
+# Triggers automatically on git commit
+git add .
+git commit -m "feat: add new feature"
+```

@@ -1,0 +1,16 @@
+{
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "source": "github",
+  "externalId": "123456789",
+  "userId": "user-123",
+  "title": "oauth-connector-sdk",
+  "bodyText": "Unified TypeScript SDK for managing OAuth flows and normalized data fetching across multiple providers",
+  "url": "https://github.com/example-user/oauth-connector-sdk",
+  "author": "example-user",
+  "publishedAt": "2024-01-15T10:30:00Z",
+  "metadata": {
+    "stars": 42,
+    "language": "TypeScript",
+    "topics": ["oauth", "sdk", "typescript", "authentication"]
+  }
+}

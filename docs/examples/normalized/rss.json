@@ -1,0 +1,15 @@
+{
+  "id": "550e8400-e29b-41d4-a716-446655440004",
+  "source": "rss",
+  "externalId": "https://example.com/blog/oauth-best-practices",
+  "userId": "user-123",
+  "title": "OAuth 2.0 Best Practices for 2024",
+  "bodyText": "A comprehensive guide to implementing OAuth 2.0 securely in modern web applications. We cover PKCE, token storage, refresh strategies, and common pitfalls to avoid.",
+  "url": "https://example.com/blog/oauth-best-practices",
+  "author": "Jane Doe",
+  "publishedAt": "2024-01-15T10:30:00Z",
+  "metadata": {
+    "categories": ["security", "authentication", "oauth"],
+    "feedTitle": "Tech Blog - Security & Auth"
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "id": "550e8400-e29b-41d4-a716-446655440002",
+  "source": "reddit",
+  "externalId": "abc123",
+  "userId": "user-123",
+  "title": "How to implement OAuth 2.0 in TypeScript?",
+  "bodyText": "I'm building a Node.js application that needs to integrate with multiple OAuth providers (Google, GitHub, Reddit). What's the best approach to handle OAuth flows, token management, and refresh logic? Any recommended libraries or patterns?",
+  "url": "https://www.reddit.com/r/typescript/comments/abc123/how_to_implement_oauth_20_in_typescript",
+  "author": "typescript_dev",
+  "publishedAt": "2024-01-15T10:30:00Z",
+  "metadata": {
+    "subreddit": "typescript",
+    "score": 156,
+    "numComments": 23
+  }
+}

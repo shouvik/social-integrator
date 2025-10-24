@@ -88,7 +88,7 @@ export class GoogleConnector extends BaseConnector {
 
     const items = (response.data as any).items || [];
 
-    // CRITICAL FIX: Use dedicated calendar mapper instead of Gmail mapper
+    // Use dedicated calendar mapper for different data structure
     return this.deps.normalizer.normalize('google-calendar', userId, items);
   }
 

@@ -33,7 +33,6 @@ describe('OAuth Flow Contracts', () => {
     rateLimits: {
       github: { qps: 5, concurrency: 10 },
       google: { qps: 2, concurrency: 5 },
-      'google-calendar': { qps: 2, concurrency: 5 },
       reddit: { qps: 1, concurrency: 3 },
       twitter: { qps: 0.5, concurrency: 2 },
       x: { qps: 0.5, concurrency: 2 },

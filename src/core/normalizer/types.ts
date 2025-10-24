@@ -13,11 +13,4 @@ export interface NormalizedItem {
   metadata?: Record<string, unknown>;
 }
 
-export type ProviderName =
-  | 'google'
-  | 'google-calendar'
-  | 'github'
-  | 'reddit'
-  | 'twitter'
-  | 'x'
-  | 'rss';
+export type ProviderName = 'google' | 'github' | 'reddit' | 'twitter' | 'x' | 'rss';

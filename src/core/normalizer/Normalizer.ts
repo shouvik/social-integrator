@@ -27,8 +27,9 @@ export class Normalizer {
 
   /**
    * Normalize provider-specific data
+   * Accepts both official providers and internal service keys (e.g. 'google-calendar')
    */
-  normalize(provider: ProviderName, userId: string, rawData: unknown[]): NormalizedItem[] {
+  normalize(provider: ProviderName | string, userId: string, rawData: unknown[]): NormalizedItem[] {
     const mapper = this.mappers.get(provider);
     if (!mapper) {
       throw new Error(`No mapper found for provider: ${provider}`);

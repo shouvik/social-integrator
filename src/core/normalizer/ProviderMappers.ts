@@ -4,13 +4,13 @@ import { v4 as uuidv4 } from 'uuid';
 import type { NormalizedItem, ProviderName } from './types';
 
 export class ProviderMappers {
-  private mappers: Map<ProviderName, (raw: any, userId: string) => NormalizedItem>;
+  private mappers: Map<string, (raw: any, userId: string) => NormalizedItem>;
 
   constructor() {
     this.mappers = new Map([
       ['github', this.mapGitHub],
       ['google', this.mapGoogle],
-      ['google-calendar', this.mapGoogleCalendar], // CRITICAL FIX: Dedicated calendar mapper
+      ['google-calendar', this.mapGoogleCalendar], // Internal: Calendar events normalization
       ['reddit', this.mapReddit],
       ['twitter', this.mapTwitter],
       ['x', this.mapTwitter], // Alias for backward compatibility
@@ -18,7 +18,7 @@ export class ProviderMappers {
     ]);
   }
 
-  get(provider: ProviderName) {
+  get(provider: ProviderName | string) {
     return this.mappers.get(provider);
   }
 
@@ -61,6 +61,7 @@ export class ProviderMappers {
         ? new Date(parseInt(raw.internalDate)).toISOString() // v1.1 ISO 8601
         : undefined,
       metadata: {
+        service: 'gmail', // Differentiate from Calendar service
         labelIds: raw.labelIds,
         threadId: raw.threadId,
       },
@@ -84,7 +85,7 @@ export class ProviderMappers {
 
     return {
       id: uuidv4(),
-      source: 'google-calendar',
+      source: 'google', // Use 'google' provider, not 'google-calendar'
       externalId: raw.id,
       userId,
       title: raw.summary || 'Untitled Event',
@@ -95,6 +96,7 @@ export class ProviderMappers {
         ? new Date(raw.created).toISOString() // v1.1 ISO 8601
         : undefined,
       metadata: {
+        service: 'calendar', // Differentiate from Gmail service
         eventType: 'calendar_event',
         startTime: startTime ? new Date(startTime).toISOString() : undefined,
         endTime: endTime ? new Date(endTime).toISOString() : undefined,

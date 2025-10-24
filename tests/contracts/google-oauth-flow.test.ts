@@ -71,7 +71,10 @@ describe('Google OAuth Flow Contract', () => {
   });
 
   it('should exchange code for tokens with refresh token', async () => {
-    await sdk.connect('google', testUserId);
+    // Get auth URL and extract the real state
+    const authUrl = await sdk.connect('google', testUserId);
+    const url = new URL(authUrl);
+    const actualState = url.searchParams.get('state')!;
 
     nock('https://oauth2.googleapis.com').post('/token').reply(200, {
       access_token: 'ya29.test_access_token',
@@ -81,7 +84,8 @@ describe('Google OAuth Flow Contract', () => {
       scope: 'https://www.googleapis.com/auth/gmail.readonly',
     });
 
-    const callbackParams = new URLSearchParams({ code: 'test_code', state: 'test_state' });
+    // Use the actual state from the auth URL
+    const callbackParams = new URLSearchParams({ code: 'test_code', state: actualState });
     await sdk.handleCallback('google', testUserId, callbackParams);
 
     // Mock Gmail API call

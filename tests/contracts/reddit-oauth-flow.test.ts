@@ -71,8 +71,10 @@ describe('Reddit OAuth Flow Contract', () => {
   });
 
   it('should fetch username from /api/v1/me before user endpoints', async () => {
-    // Setup token
-    await sdk.connect('reddit', testUserId);
+    // Setup token and extract real state
+    const authUrl = await sdk.connect('reddit', testUserId);
+    const url = new URL(authUrl);
+    const actualState = url.searchParams.get('state')!;
 
     nock('https://www.reddit.com').post('/api/v1/access_token').reply(200, {
       access_token: 'reddit_access_token',
@@ -82,7 +84,7 @@ describe('Reddit OAuth Flow Contract', () => {
       scope: 'identity read history',
     });
 
-    const callbackParams = new URLSearchParams({ code: 'test_code', state: 'test_state' });
+    const callbackParams = new URLSearchParams({ code: 'test_code', state: actualState });
     await sdk.handleCallback('reddit', testUserId, callbackParams);
 
     // Mock /api/v1/me to get username
@@ -129,7 +131,9 @@ describe('Reddit OAuth Flow Contract', () => {
   });
 
   it('should enforce strict User-Agent header', async () => {
-    await sdk.connect('reddit', testUserId);
+    const authUrl = await sdk.connect('reddit', testUserId);
+    const url = new URL(authUrl);
+    const actualState = url.searchParams.get('state')!;
 
     nock('https://www.reddit.com').post('/api/v1/access_token').reply(200, {
       access_token: 'reddit_token',
@@ -137,7 +141,7 @@ describe('Reddit OAuth Flow Contract', () => {
       expires_in: 3600,
     });
 
-    const callbackParams = new URLSearchParams({ code: 'test_code', state: 'test_state' });
+    const callbackParams = new URLSearchParams({ code: 'test_code', state: actualState });
     await sdk.handleCallback('reddit', testUserId, callbackParams);
 
     // Reddit requires specific User-Agent format
@@ -158,7 +162,9 @@ describe('Reddit OAuth Flow Contract', () => {
   });
 
   it('should handle Reddit rate limiting (60 req/min)', async () => {
-    await sdk.connect('reddit', testUserId);
+    const authUrl = await sdk.connect('reddit', testUserId);
+    const url = new URL(authUrl);
+    const actualState = url.searchParams.get('state')!;
 
     nock('https://www.reddit.com').post('/api/v1/access_token').reply(200, {
       access_token: 'reddit_token',
@@ -166,7 +172,7 @@ describe('Reddit OAuth Flow Contract', () => {
       expires_in: 3600,
     });
 
-    const callbackParams = new URLSearchParams({ code: 'test_code', state: 'test_state' });
+    const callbackParams = new URLSearchParams({ code: 'test_code', state: actualState });
     await sdk.handleCallback('reddit', testUserId, callbackParams);
 
     // Mock 429 response

@@ -13,19 +13,22 @@ import type { DistributedRefreshLock } from '../core/token/DistributedRefreshLoc
 
 export interface Connector {
   readonly name: ProviderName;
-  
+
   connect(userId: string, opts?: ConnectOptions): Promise<string>;
   handleCallback(userId: string, params: URLSearchParams): Promise<TokenSet>;
   fetch(userId: string, params?: FetchParams): Promise<NormalizedItem[]>;
   disconnect(userId: string): Promise<void>;
+
+  // Optional method for provider-specific connect options
+  getConnectOptions?(opts?: ConnectOptions): ConnectOptions;
 }
 
 export interface FetchParams {
   limit?: number;
   offset?: number;
   since?: Date;
-  type?: string;                       // Provider-specific (e.g., 'starred', 'repos')
-  [key: string]: unknown;              // Allow provider-specific params
+  type?: string; // Provider-specific (e.g., 'starred', 'repos')
+  [key: string]: unknown; // Allow provider-specific params
 }
 
 export interface CoreDeps {
@@ -37,4 +40,3 @@ export interface CoreDeps {
   metrics: MetricsCollector;
   refreshLock: DistributedRefreshLock;
 }
-

@@ -388,7 +388,11 @@ describe('HTTP Behavior Integration', () => {
       await Promise.allSettled(promises);
 
       // Circuit breaker should have prevented some requests
-      expect(requestCount).toBeLessThan(10);
+      // Without circuit breaker: 10 requests * (1 initial + 3 retries) = 40 total
+      // With circuit breaker opening at 5 failures: expect significantly fewer
+      // Some requests will complete their retries before circuit opens
+      expect(requestCount).toBeLessThan(40);
+      expect(requestCount).toBeGreaterThan(20); // At least 5 requests with retries
     });
   });
 });

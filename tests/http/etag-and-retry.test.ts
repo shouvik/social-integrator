@@ -63,8 +63,10 @@ describe('HTTP Behavior: ETag Caching', () => {
   });
 
   it('should cache response with ETag and send If-None-Match on subsequent requests', async () => {
-    // Setup token
-    await sdk.connect('github', testUserId);
+    // Setup token - extract actual state from auth URL
+    const authUrl = await sdk.connect('github', testUserId);
+    const url = new URL(authUrl);
+    const actualState = url.searchParams.get('state')!;
 
     nock('https://github.com').post('/login/oauth/access_token').reply(200, {
       access_token: 'gho_test_token',
@@ -72,7 +74,7 @@ describe('HTTP Behavior: ETag Caching', () => {
       scope: 'user,repo',
     });
 
-    const callbackParams = new URLSearchParams({ code: 'test_code', state: 'test_state' });
+    const callbackParams = new URLSearchParams({ code: 'test_code', state: actualState });
     await sdk.handleCallback('github', testUserId, callbackParams);
 
     const testRepoData = [
@@ -117,7 +119,9 @@ describe('HTTP Behavior: ETag Caching', () => {
   });
 
   it('should update cache when ETag changes', async () => {
-    await sdk.connect('github', testUserId);
+    const authUrl = await sdk.connect('github', testUserId);
+    const url = new URL(authUrl);
+    const actualState = url.searchParams.get('state')!;
 
     nock('https://github.com').post('/login/oauth/access_token').reply(200, {
       access_token: 'gho_test_token',
@@ -125,7 +129,7 @@ describe('HTTP Behavior: ETag Caching', () => {
       scope: 'user,repo',
     });
 
-    const callbackParams = new URLSearchParams({ code: 'test_code', state: 'test_state' });
+    const callbackParams = new URLSearchParams({ code: 'test_code', state: actualState });
     await sdk.handleCallback('github', testUserId, callbackParams);
 
     // First request with ETag v1
@@ -213,7 +217,9 @@ describe('HTTP Behavior: 429 Rate Limiting & Retry-After', () => {
   });
 
   it('should respect Retry-After header (seconds) on 429 responses', async () => {
-    await sdk.connect('github', testUserId);
+    const authUrl = await sdk.connect('github', testUserId);
+    const url = new URL(authUrl);
+    const actualState = url.searchParams.get('state')!;
 
     nock('https://github.com').post('/login/oauth/access_token').reply(200, {
       access_token: 'gho_test_token',
@@ -221,7 +227,7 @@ describe('HTTP Behavior: 429 Rate Limiting & Retry-After', () => {
       scope: 'user,repo',
     });
 
-    const callbackParams = new URLSearchParams({ code: 'test_code', state: 'test_state' });
+    const callbackParams = new URLSearchParams({ code: 'test_code', state: actualState });
     await sdk.handleCallback('github', testUserId, callbackParams);
 
     const startTime = Date.now();
@@ -251,7 +257,9 @@ describe('HTTP Behavior: 429 Rate Limiting & Retry-After', () => {
   });
 
   it('should retry with exponential backoff on 500 errors', async () => {
-    await sdk.connect('github', testUserId);
+    const authUrl = await sdk.connect('github', testUserId);
+    const url = new URL(authUrl);
+    const actualState = url.searchParams.get('state')!;
 
     nock('https://github.com').post('/login/oauth/access_token').reply(200, {
       access_token: 'gho_test_token',
@@ -259,7 +267,7 @@ describe('HTTP Behavior: 429 Rate Limiting & Retry-After', () => {
       scope: 'user,repo',
     });
 
-    const callbackParams = new URLSearchParams({ code: 'test_code', state: 'test_state' });
+    const callbackParams = new URLSearchParams({ code: 'test_code', state: actualState });
     await sdk.handleCallback('github', testUserId, callbackParams);
 
     // First two attempts fail
@@ -285,7 +293,9 @@ describe('HTTP Behavior: 429 Rate Limiting & Retry-After', () => {
   });
 
   it('should fail after max retries exhausted', async () => {
-    await sdk.connect('github', testUserId);
+    const authUrl = await sdk.connect('github', testUserId);
+    const url = new URL(authUrl);
+    const actualState = url.searchParams.get('state')!;
 
     nock('https://github.com').post('/login/oauth/access_token').reply(200, {
       access_token: 'gho_test_token',
@@ -293,7 +303,7 @@ describe('HTTP Behavior: 429 Rate Limiting & Retry-After', () => {
       scope: 'user,repo',
     });
 
-    const callbackParams = new URLSearchParams({ code: 'test_code', state: 'test_state' });
+    const callbackParams = new URLSearchParams({ code: 'test_code', state: actualState });
     await sdk.handleCallback('github', testUserId, callbackParams);
 
     // All attempts fail

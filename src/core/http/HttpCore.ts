@@ -37,8 +37,8 @@ export class HttpCore {
   ) {
     this.metrics = metrics;
     this.logger = logger;
-    this.retryHandler = new RetryHandler(retryConfig, logger);
     this.circuitBreaker = new CircuitBreaker(logger);
+    this.retryHandler = new RetryHandler(retryConfig, logger, this.circuitBreaker);
     this.etagCache = new ETagCache();
 
     this.axiosInstance = axios.create({
@@ -151,6 +151,7 @@ export class HttpCore {
             this.metrics.incrementCounter('http_cache_hits', { provider });
             return {
               ...cachedData.payload,
+              status: 304, // Preserve 304 status, not the cached 200
               cached: true,
             };
           }

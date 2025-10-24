@@ -1,0 +1,17 @@
+{
+  "id": "550e8400-e29b-41d4-a716-446655440003",
+  "source": "twitter",
+  "externalId": "1234567890",
+  "userId": "user-123",
+  "bodyText": "Just shipped OAuth 2.0 support for our SDK! 🚀 Now supporting Google, GitHub, Reddit, and Twitter with unified token management and automatic refresh. #typescript #oauth #webdev",
+  "url": "https://twitter.com/i/web/status/1234567890",
+  "author": "tech_company",
+  "publishedAt": "2024-01-15T10:30:00Z",
+  "metadata": {
+    "retweets": 12,
+    "likes": 45,
+    "replies": 3,
+    "quotes": 2,
+    "hashtags": ["typescript", "oauth", "webdev"]
+  }
+}

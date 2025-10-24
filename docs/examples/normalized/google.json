@@ -1,0 +1,15 @@
+{
+  "id": "550e8400-e29b-41d4-a716-446655440001",
+  "source": "google",
+  "externalId": "18c1234567890abcd",
+  "userId": "user-123",
+  "title": "Meeting Reminder: Q1 Planning",
+  "bodyText": "This is a reminder that we have our Q1 planning meeting scheduled for tomorrow at 3 PM. Please review the attached documents and come prepared with your team's goals.",
+  "url": "https://mail.google.com/mail/u/0/#inbox/18c1234567890abcd",
+  "author": "boss@example.com",
+  "publishedAt": "2024-01-15T10:30:00Z",
+  "metadata": {
+    "labelIds": ["INBOX", "UNREAD", "IMPORTANT"],
+    "threadId": "18c1234567890abcd"
+  }
+}

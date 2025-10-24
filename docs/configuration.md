@@ -57,18 +57,19 @@ interface TokenStoreConfig {
 
 ### Options
 
-| Option | Type | Required | Default | Description |
-|--------|------|----------|---------|-------------|
-| `backend` | string | Yes | - | Storage backend: `memory`, `redis`, or `postgres` |
-| `url` | string | Conditional | - | Connection URL (required for redis/postgres) |
-| `encryption.key` | string | Yes | - | Encryption key (32+ characters hex string) |
-| `encryption.algorithm` | string | Yes | - | AES-GCM variant to use |
-| `preRefreshMarginMinutes` | number | No | 5 | Minutes before expiry to trigger refresh |
-| `expiredTokenBufferMinutes` | number | No | 5 | Minutes to keep expired tokens for refresh |
+| Option                      | Type   | Required    | Default | Description                                       |
+| --------------------------- | ------ | ----------- | ------- | ------------------------------------------------- |
+| `backend`                   | string | Yes         | -       | Storage backend: `memory`, `redis`, or `postgres` |
+| `url`                       | string | Conditional | -       | Connection URL (required for redis/postgres)      |
+| `encryption.key`            | string | Yes         | -       | Encryption key (32+ characters hex string)        |
+| `encryption.algorithm`      | string | Yes         | -       | AES-GCM variant to use                            |
+| `preRefreshMarginMinutes`   | number | No          | 5       | Minutes before expiry to trigger refresh          |
+| `expiredTokenBufferMinutes` | number | No          | 5       | Minutes to keep expired tokens for refresh        |
 
 ### Examples
 
 **Memory (Development):**
+
 ```typescript
 tokenStore: {
   backend: 'memory',
@@ -80,6 +81,7 @@ tokenStore: {
 ```
 
 **Redis (Production):**
+
 ```typescript
 tokenStore: {
   backend: 'redis',
@@ -94,6 +96,7 @@ tokenStore: {
 ```
 
 **PostgreSQL (Enterprise):**
+
 ```typescript
 tokenStore: {
   backend: 'postgres',
@@ -135,13 +138,13 @@ interface RetryConfig {
 
 ### Options
 
-| Option | Type | Required | Default | Description |
-|--------|------|----------|---------|-------------|
-| `timeout` | number | No | 30000 | Request timeout in ms |
-| `retry.maxAttempts` | number | Yes | - | Maximum retry attempts |
-| `retry.baseDelayMs` | number | Yes | - | Initial retry delay in ms |
-| `retry.maxDelayMs` | number | Yes | - | Maximum retry delay in ms (cap) |
-| `keepAlive` | boolean | No | true | Enable HTTP keep-alive |
+| Option              | Type    | Required | Default | Description                     |
+| ------------------- | ------- | -------- | ------- | ------------------------------- |
+| `timeout`           | number  | No       | 30000   | Request timeout in ms           |
+| `retry.maxAttempts` | number  | Yes      | -       | Maximum retry attempts          |
+| `retry.baseDelayMs` | number  | Yes      | -       | Initial retry delay in ms       |
+| `retry.maxDelayMs`  | number  | Yes      | -       | Maximum retry delay in ms (cap) |
+| `keepAlive`         | boolean | No       | true    | Enable HTTP keep-alive          |
 
 ### Example
 
@@ -174,8 +177,8 @@ Per-provider rate limiting to prevent API throttling.
 
 ```typescript
 interface RateLimitConfig {
-  qps: number;          // Queries per second
-  concurrency: number;  // Max concurrent requests
+  qps: number; // Queries per second
+  concurrency: number; // Max concurrent requests
 }
 ```
 
@@ -183,25 +186,25 @@ interface RateLimitConfig {
 
 ```typescript
 rateLimits: {
-  github: { 
+  github: {
     qps: 10,          // GitHub: 5,000 req/hour = ~1.4/sec (be conservative)
-    concurrency: 5 
+    concurrency: 5
   },
-  google: { 
+  google: {
     qps: 10,          // Google: varies by service, 10/sec is safe
-    concurrency: 5 
+    concurrency: 5
   },
-  reddit: { 
+  reddit: {
     qps: 1,           // Reddit: 60 req/minute = 1/sec
-    concurrency: 2 
+    concurrency: 2
   },
-  twitter: { 
+  twitter: {
     qps: 5,           // Twitter: varies by tier, 5/sec is safe
-    concurrency: 3 
+    concurrency: 3
   },
-  rss: { 
+  rss: {
     qps: 1,           // RSS: be gentle with origin servers
-    concurrency: 2 
+    concurrency: 2
   }
 }
 ```
@@ -237,6 +240,7 @@ interface OAuth2Config {
 ### Provider-Specific Configurations
 
 **GitHub:**
+
 ```typescript
 github: {
   clientId: process.env.GITHUB_CLIENT_ID,
@@ -249,6 +253,7 @@ github: {
 ```
 
 **Google:**
+
 ```typescript
 google: {
   clientId: process.env.GOOGLE_CLIENT_ID,
@@ -266,6 +271,7 @@ google: {
 ```
 
 **Reddit:**
+
 ```typescript
 reddit: {
   clientId: process.env.REDDIT_CLIENT_ID,
@@ -277,6 +283,7 @@ reddit: {
 ```
 
 **Twitter:**
+
 ```typescript
 twitter: {
   clientId: process.env.TWITTER_CLIENT_ID,
@@ -288,6 +295,7 @@ twitter: {
 ```
 
 **RSS:**
+
 ```typescript
 // RSS doesn't require OAuth configuration
 // Just register in rateLimits
@@ -295,17 +303,17 @@ twitter: {
 
 ### Required Scopes by Feature
 
-| Provider | Feature | Required Scopes |
-|----------|---------|----------------|
-| GitHub | Starred repos | `user`, `repo` |
-| GitHub | User repos | `user`, `repo` |
-| Google | Gmail | `gmail.readonly` |
-| Google | Calendar | `calendar.readonly` |
-| Reddit | Saved posts | `identity`, `read`, `history` |
-| Reddit | User posts | `identity`, `read` |
-| Twitter | Timeline | `tweet.read`, `users.read` |
-| Twitter | Search | `tweet.read` |
-| RSS | Any feed | None |
+| Provider | Feature       | Required Scopes               |
+| -------- | ------------- | ----------------------------- |
+| GitHub   | Starred repos | `user`, `repo`                |
+| GitHub   | User repos    | `user`, `repo`                |
+| Google   | Gmail         | `gmail.readonly`              |
+| Google   | Calendar      | `calendar.readonly`           |
+| Reddit   | Saved posts   | `identity`, `read`, `history` |
+| Reddit   | User posts    | `identity`, `read`            |
+| Twitter  | Timeline      | `tweet.read`, `users.read`    |
+| Twitter  | Search        | `tweet.read`                  |
+| RSS      | Any feed      | None                          |
 
 ---
 
@@ -376,12 +384,14 @@ logging: {
 ### Sensitive Data Redaction
 
 The SDK automatically redacts:
+
 - Access tokens
 - Refresh tokens
 - Client secrets
 - Encryption keys
 
 Example log output:
+
 ```json
 {
   "level": "info",
@@ -416,7 +426,7 @@ GOOGLE_CLIENT_SECRET=your-google-secret
 REDDIT_CLIENT_ID=your-reddit-client-id
 REDDIT_CLIENT_SECRET=your-reddit-secret
 
-# Twitter OAuth  
+# Twitter OAuth
 TWITTER_CLIENT_ID=your-twitter-client-id
 TWITTER_CLIENT_SECRET=your-twitter-secret
 ```
@@ -460,10 +470,10 @@ const sdk = await ConnectorSDK.init({
     url: process.env.REDIS_URL!,
     encryption: {
       key: process.env.ENCRYPTION_KEY!,
-      algorithm: 'aes-256-gcm'
+      algorithm: 'aes-256-gcm',
     },
     preRefreshMarginMinutes: 10,
-    expiredTokenBufferMinutes: 5
+    expiredTokenBufferMinutes: 5,
   },
 
   // HTTP Client
@@ -472,9 +482,9 @@ const sdk = await ConnectorSDK.init({
     retry: {
       maxAttempts: 3,
       baseDelayMs: 1000,
-      maxDelayMs: 10000
+      maxDelayMs: 10000,
     },
-    keepAlive: true
+    keepAlive: true,
   },
 
   // Rate Limiting
@@ -483,7 +493,7 @@ const sdk = await ConnectorSDK.init({
     google: { qps: 10, concurrency: 5 },
     reddit: { qps: 1, concurrency: 2 },
     twitter: { qps: 5, concurrency: 3 },
-    rss: { qps: 1, concurrency: 2 }
+    rss: { qps: 1, concurrency: 2 },
   },
 
   // OAuth Providers
@@ -493,38 +503,38 @@ const sdk = await ConnectorSDK.init({
       clientSecret: process.env.GITHUB_CLIENT_SECRET!,
       discoveryUrl: 'https://token.actions.githubusercontent.com/.well-known/openid-configuration',
       scopes: ['user', 'repo'],
-      usePKCE: true
+      usePKCE: true,
     },
     google: {
       clientId: process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
       discoveryUrl: 'https://accounts.google.com/.well-known/openid-configuration',
-      scopes: ['openid', 'email', 'profile', 'https://www.googleapis.com/auth/gmail.readonly']
+      scopes: ['openid', 'email', 'profile', 'https://www.googleapis.com/auth/gmail.readonly'],
     },
     reddit: {
       clientId: process.env.REDDIT_CLIENT_ID!,
       clientSecret: process.env.REDDIT_CLIENT_SECRET!,
       discoveryUrl: 'https://www.reddit.com/.well-known/openid-configuration',
-      scopes: ['identity', 'read', 'history']
+      scopes: ['identity', 'read', 'history'],
     },
     twitter: {
       clientId: process.env.TWITTER_CLIENT_ID!,
       clientSecret: process.env.TWITTER_CLIENT_SECRET!,
       discoveryUrl: 'https://api.twitter.com/.well-known/openid-configuration',
-      scopes: ['tweet.read', 'users.read', 'offline.access']
-    }
+      scopes: ['tweet.read', 'users.read', 'offline.access'],
+    },
   },
 
   // Observability
   metrics: {
     enabled: true,
-    port: 9090
+    port: 9090,
   },
 
   logging: {
     level: 'info',
-    format: 'json'
-  }
+    format: 'json',
+  },
 });
 ```
 
@@ -536,16 +546,16 @@ const sdk = await ConnectorSDK.init({
     backend: 'memory',
     encryption: {
       key: 'dev-key-32-characters-minimum!',
-      algorithm: 'aes-256-gcm'
-    }
+      algorithm: 'aes-256-gcm',
+    },
   },
 
   http: {
     retry: {
       maxAttempts: 3,
       baseDelayMs: 1000,
-      maxDelayMs: 10000
-    }
+      maxDelayMs: 10000,
+    },
   },
 
   rateLimits: {
@@ -553,7 +563,7 @@ const sdk = await ConnectorSDK.init({
     google: { qps: 5, concurrency: 3 },
     reddit: { qps: 1, concurrency: 1 },
     twitter: { qps: 3, concurrency: 2 },
-    rss: { qps: 1, concurrency: 1 }
+    rss: { qps: 1, concurrency: 1 },
   },
 
   providers: {
@@ -561,9 +571,9 @@ const sdk = await ConnectorSDK.init({
       clientId: process.env.GITHUB_CLIENT_ID!,
       clientSecret: process.env.GITHUB_CLIENT_SECRET!,
       discoveryUrl: 'https://token.actions.githubusercontent.com/.well-known/openid-configuration',
-      scopes: ['user']
-    }
-  }
+      scopes: ['user'],
+    },
+  },
 });
 ```
 
@@ -623,13 +633,13 @@ try {
 
 ### Common Validation Errors
 
-| Error | Cause | Fix |
-|-------|-------|-----|
-| `Encryption key must be at least 32 characters` | Short key | Generate with `openssl rand -hex 32` |
-| `Invalid backend type` | Wrong backend value | Use `memory`, `redis`, or `postgres` |
-| `Missing required field: clientId` | OAuth config incomplete | Add all required OAuth fields |
-| `Invalid scope format` | Scopes not array | Provide array of strings |
-| `QPS must be positive` | Invalid rate limit | Set qps >= 1 |
+| Error                                           | Cause                   | Fix                                  |
+| ----------------------------------------------- | ----------------------- | ------------------------------------ |
+| `Encryption key must be at least 32 characters` | Short key               | Generate with `openssl rand -hex 32` |
+| `Invalid backend type`                          | Wrong backend value     | Use `memory`, `redis`, or `postgres` |
+| `Missing required field: clientId`              | OAuth config incomplete | Add all required OAuth fields        |
+| `Invalid scope format`                          | Scopes not array        | Provide array of strings             |
+| `QPS must be positive`                          | Invalid rate limit      | Set qps >= 1                         |
 
 ---
 
@@ -673,3 +683,178 @@ try {
 - [Troubleshooting Guide](./troubleshooting.md) - Common issues and solutions
 - [Example Application](../examples/express-app/README.md) - Working example
 - [Deployment Guide](../README.md#docker-deployment) - Production deployment
+
+---
+
+## Security Hardening
+
+### Multi-Key Encryption (Key Rotation)
+
+**Strategy:** Support decryption with multiple keys, encrypt with latest key only.
+
+```typescript
+// Pseudo-code for future implementation
+encryption: {
+  keys: [
+    { id: 'key-2024-10', key: process.env.ENCRYPTION_KEY_NEW }, // Encrypts new tokens
+    { id: 'key-2024-09', key: process.env.ENCRYPTION_KEY_OLD }, // Decrypts old tokens
+  ];
+}
+```
+
+**Current Implementation:** Single-key only. For rotation:
+
+1. Generate new key
+2. Deploy with new key
+3. Wait for old tokens to expire
+4. Remove old key
+
+### Clock Skew Buffer
+
+**Problem:** Server clock drifts from OAuth provider, causing premature/late token refresh.
+
+**Solution:** Buffer window for token refresh:
+
+```typescript
+tokenStore: {
+  preRefreshMarginMinutes: 5,  // Refresh 5 minutes BEFORE expiry
+  expiredTokenBufferMinutes: 5 // Keep expired tokens 5 minutes for refresh
+}
+```
+
+**Calculation:**
+
+```
+actualExpiry = token.expiresAt - preRefreshMarginMinutes
+deletionTime = token.expiresAt + expiredTokenBufferMinutes
+```
+
+### Distributed Refresh Locks (Redis)
+
+**Problem:** Multiple instances refresh same token simultaneously.
+
+**Solution:** Redis-based distributed locks:
+
+```typescript
+// Internal implementation
+const lockKey = `refresh_lock:${provider}:${userId}`;
+const lockAcquired = await redis.set(lockKey, 'locked', 'NX', 'EX', 60);
+
+if (lockAcquired) {
+  // Perform refresh
+  await refreshToken();
+  await redis.del(lockKey);
+} else {
+  // Wait for other instance to complete
+  await pollForNewToken();
+}
+```
+
+**Configuration:**
+
+```typescript
+tokenStore: {
+  backend: 'redis',  // Enables distributed locks automatically
+  url: process.env.REDIS_URL
+}
+```
+
+### Failure Modes & Circuit Breaker
+
+**Retry with Full Jitter:**
+
+```typescript
+http: {
+  retry: {
+    maxRetries: 3,
+    baseDelay: 1000,    // Initial delay: 1s
+    maxDelay: 10000,    // Max delay: 10s (with jitter)
+    retryableStatusCodes: [429, 500, 502, 503, 504]
+  }
+}
+```
+
+**Jitter Formula:**
+
+```
+delay = min(maxDelay, baseDelay * 2^attempt) * (0.5 + random(0, 0.5))
+```
+
+**Circuit Breaker:**
+
+- **Closed:** Normal operation
+- **Open:** Stop requests after 5 consecutive failures
+- **Half-Open:** Test with single request after 60s
+
+**Re-Close Policy:**
+
+- Successful request closes circuit
+- Failed request reopens for another 60s
+
+---
+
+## Production Deployment
+
+### Checklist
+
+- [ ] Use Redis/PostgreSQL (not memory)
+- [ ] Enable distributed refresh locks (Redis)
+- [ ] Configure Prometheus scraping
+- [ ] Set up log aggregation (ELK, Datadog)
+- [ ] Enable circuit breakers
+- [ ] Use HTTPS for all redirect URIs
+- [ ] Rotate encryption keys every 90 days
+- [ ] Monitor token refresh success rate (> 99%)
+- [ ] Configure alerts for provider outages
+- [ ] Document incident response procedures
+
+### High Availability
+
+```typescript
+// Multi-instance setup
+tokenStore: {
+  backend: 'redis',
+  url: 'redis://redis-cluster:6379',  // Redis Cluster for HA
+  encryption: {
+    key: process.env.ENCRYPTION_KEY
+  }
+}
+
+http: {
+  retry: {
+    maxRetries: 5,      // More retries for production
+    baseDelay: 2000,
+    maxDelay: 30000
+  }
+}
+
+metrics: {
+  enabled: true,
+  port: 9090
+}
+```
+
+### Load Balancing
+
+Use sticky sessions OR distributed token storage:
+
+**Option 1: Sticky Sessions**
+
+- Route user to same instance
+- Faster (local cache)
+- Not resilient to instance failure
+
+**Option 2: Distributed Storage (Recommended)**
+
+- Redis backend
+- Any instance can serve any user
+- Resilient to instance failures
+
+---
+
+## See Also
+
+- [Threat Model](./threat-model.md) - Security controls
+- [Observability](./observability.md) - Monitoring setup
+- [FAQ](./faq.md) - Common issues
+- [Troubleshooting](./troubleshooting.md) - Debugging guide

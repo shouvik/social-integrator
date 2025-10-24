@@ -1,51 +1,31 @@
-# OAuth Data Connector SDK - Low-Level Design (LLD)
-**Version:** 1.1  
-**Date:** October 2025  
-**Based on:** HLD v1.0, PRD v1.2
+# OAuth Data Connector SDK - Low-Level Design
 
----
+## 0. Implementation Notes
 
-## Changelog (v1.0 → v1.1)
+### Critical Considerations
 
-**Critical Fixes:**
-1. **TokenStore TTL:** Fixed calculation to keep expired tokens in store for refresh (minimum 5-minute buffer)
-2. **DistributedRefreshLock:** Added async initialization with awaited Redis connection
-3. **SDK Constructor:** Fixed dependency ordering to prevent `this.core` reference errors
-4. **HttpCore:** Fixed ETag conditional requests and rate limiter queue execution
-5. **Token Behavior:** Clarified `getToken()` to return `null` for expired tokens unless `{ includeExpired: true }`
+This section highlights key implementation patterns that ensure correct SDK behavior.
 
-**Status:** All design review blockers resolved. Ready for Phase 1 implementation.
+#### TokenStore TTL Calculation
 
----
+Expired tokens must be retained temporarily to allow refresh attempts. The TTL calculation ensures tokens remain accessible for at least 5 minutes after expiration:
 
-## 0. Critical Implementation Notes (v1.1)
-
-### ⚠️ MUST-READ Before Implementation
-
-This section documents critical fixes from design review. **All code examples below reflect v1.1 corrections.**
-
-#### Fix #1: TokenStore TTL Calculation
-**Problem:** v1.0 used `Math.max(expiresAt - now, 0) * 1.1` which resulted in TTL=0 for expired tokens, causing immediate deletion.
-
-**Solution:**
 ```typescript
-// CORRECT v1.1 implementation
 const bufferMs = (config.expiredTokenBufferMinutes ?? 5) * 60 * 1000;
-const ttlMs = tokenSet.expiresAt 
+const ttlMs = tokenSet.expiresAt
   ? Math.max(tokenSet.expiresAt.getTime() - Date.now() + bufferMs, bufferMs)
   : undefined;
-// Expired tokens kept for minimum 5 minutes to allow refresh
 ```
 
-**Config Required:**
-- `expiredTokenBufferMinutes` (default: 5) - Keep expired tokens for refresh
+**Configuration:**
+- `expiredTokenBufferMinutes` (default: 5) - Duration to retain expired tokens for refresh
 
-#### Fix #2: DistributedRefreshLock Redis Connection
-**Problem:** Redis `connect()` not awaited, causing `ClientClosedError`.
+#### Async Initialization Pattern
 
-**Solution:**
+Components that require async initialization (Redis connections, OAuth discovery) must be properly initialized before use:
+
 ```typescript
-// Constructor stores promise
+// DistributedRefreshLock example
 constructor(redisUrl: string | undefined, logger: Logger) {
   if (redisUrl) {
     this.redis = createClient({ url: redisUrl });
@@ -55,12 +35,10 @@ constructor(redisUrl: string | undefined, logger: Logger) {
   }
 }
 
-// MUST call before use
 async initialize(): Promise<void> {
   await this.ready;
 }
 
-// Guard all operations
 private ensureConnected(): boolean {
   return this.redis && this.connected;
 }
@@ -71,18 +49,18 @@ private ensureConnected(): boolean {
 static async init(config: InitConfig): Promise<ConnectorSDK> {
   const sdk = new ConnectorSDK(config);
   await sdk.core.auth.initialize();
-  await sdk.core.refreshLock.initialize(); // CRITICAL: Wait for Redis
+  await sdk.core.refreshLock.initialize();
   return sdk;
 }
 ```
 
-#### Fix #3: SDK Constructor Dependency Ordering
-**Problem:** `this.core` dereferenced before assignment.
+#### SDK Constructor Dependency Ordering
 
-**Solution:**
+All dependencies must be constructed before assigning to `this.core` to prevent reference errors:
+
 ```typescript
 private constructor(config: InitConfig) {
-  // Build ALL dependencies FIRST
+  // Construct all dependencies
   const logger = new Logger(config.logging);
   const metrics = new MetricsCollector(config.metrics);
   const normalizer = new Normalizer();
@@ -93,21 +71,21 @@ private constructor(config: InitConfig) {
     config.tokenStore.backend === 'redis' ? config.tokenStore.url : undefined,
     logger
   );
-  
-  // THEN assign this.core
+
+  // Assign to this.core
   this.core = { logger, metrics, normalizer, tokens, auth, http, refreshLock };
-  
-  // NOW safe to use this.core
+
+  // Now safe to register connectors
   this.registerDefaultConnectors(config);
 }
 ```
 
-#### Fix #4: HttpCore ETag & Rate Limiting
-**Problem:** ETag cache returned unnormalized data; rate limiter queue never executed requests.
+#### ETag-Based Conditional Requests
 
-**Solution:**
+HttpCore implements conditional requests using ETags to reduce bandwidth and provider API costs:
+
 ```typescript
-// ETag: Send If-None-Match header
+// Send If-None-Match header
 const headers = { ...config.headers };
 if (config.etagKey) {
   const cached = this.etagCache.get(config.etagKey);
@@ -116,10 +94,15 @@ if (config.etagKey) {
 
 // Handle 304 Not Modified
 if (axiosResponse.status === 304 && cached) {
-  return { ...cached.payload, cached: true }; // Already normalized
+  return { ...cached.payload, cached: true };
 }
+```
 
-// Rate limiter: Execute task INSIDE queue
+#### Rate Limiting Implementation
+
+The rate limiter must execute tasks within the queue, not just queue them:
+
+```typescript
 private async runThroughRateLimiter<T>(
   provider: ProviderName,
   skip: boolean | undefined,
@@ -127,70 +110,54 @@ private async runThroughRateLimiter<T>(
 ): Promise<T> {
   const queue = this.rateLimiters.get(provider);
   if (!queue || skip) return task();
-  return queue.add(task); // CRITICAL: Pass task to queue
+  return queue.add(task); // Queue executes the task
 }
 ```
 
-#### Fix #5: Token Retrieval Behavior
-**Problem:** Unclear when expired tokens returned.
+#### Token Retrieval Behavior
 
-**Solution:**
+The `getToken()` method supports retrieving expired tokens for refresh scenarios:
+
 ```typescript
-// getToken signature
 async getToken(
   userId: string,
   provider: ProviderName,
   opts: { includeExpired?: boolean } = {}
 ): Promise<TokenSet | null>
 
-// Behavior:
-// - Default: Returns null for expired tokens
-// - { includeExpired: true }: Returns expired tokens for refresh handling
+// Default: Returns null for expired tokens
+// With { includeExpired: true }: Returns expired tokens for refresh handling
+```
 
-// BaseConnector usage:
+**BaseConnector Pattern:**
+```typescript
 protected async getAccessToken(userId: string): Promise<string> {
-  // Request expired tokens explicitly
   let token = await this.deps.tokens.getToken(userId, this.name, { includeExpired: true });
-  
+
   if (!token) throw new TokenNotFoundError();
-  
-  // Check if refresh needed
-  const needsRefresh = token.expiresAt && token.refreshToken && 
+
+  const needsRefresh = token.expiresAt && token.refreshToken &&
     token.expiresAt.getTime() <= Date.now() + this.preRefreshMarginMs;
-  
+
   if (needsRefresh) {
     token = await this.refreshWithDedup(userId, token.refreshToken);
   }
-  
+
   return token.accessToken;
 }
 ```
 
-#### Provider Mapper Updates
-**All mappers changed** to return ISO 8601 strings for `publishedAt`:
+#### Timestamp Serialization
+
+All `publishedAt` fields must be ISO 8601 strings, not Date objects:
 
 ```typescript
-// Before (v1.0)
-publishedAt: raw.created_at ? new Date(raw.created_at) : undefined
-
-// After (v1.1)
+// Provider mappers
 publishedAt: raw.created_at ? new Date(raw.created_at).toISOString() : undefined
+
+// Zod validation
+publishedAt: z.string().datetime().optional()
 ```
-
-**Zod validation:**
-```typescript
-publishedAt: z.string().datetime().optional() // Validates ISO 8601
-```
-
-### Implementation Checklist
-
-Before writing any code, ensure:
-- [ ] TokenStore TTL uses `Math.max(time + buffer, buffer)`
-- [ ] DistributedRefreshLock awaited in `SDK.init()`
-- [ ] SDK constructor builds deps before assigning `this.core`
-- [ ] HttpCore rate limiter executes tasks in queue
-- [ ] All `publishedAt` fields serialize to ISO 8601 strings
-- [ ] Tests cover expired token refresh scenarios
 
 ---
 

@@ -93,12 +93,6 @@ console.log(items);
 - ✅ **Normalized Schema** - Consistent data format across all providers
 - ✅ **Observability** - Prometheus metrics, structured logging, request tracing
 
-### v1.1 Critical Fixes
-- ✅ **TokenStore TTL** - Expired tokens kept for 5 minutes to allow refresh
-- ✅ **Redis Connection** - Async initialization with connection guards
-- ✅ **SDK Bootstrap** - Dependency ordering prevents initialization errors
-- ✅ **ETag Caching** - Proper conditional requests with `If-None-Match`
-- ✅ **Rate Limiting** - Queue properly wraps HTTP requests
 
 ## 🧪 Testing
 
@@ -112,11 +106,6 @@ npm run test:coverage
 # Run specific test
 npx vitest run tests/unit/TokenStore.test.ts
 ```
-
-**Current Status:**
-- ✅ 6 tests passing
-- ✅ TokenStore v1.1 validation (expired token handling)
-- ✅ SDK initialization test
 
 ## 🏗️ Architecture
 
@@ -287,38 +276,6 @@ src/
 └── index.ts                     - Public exports
 ```
 
-## 🎯 Current Implementation Status
-
-| Component | Status | Tests |
-|-----------|--------|-------|
-| TokenStore (v1.1) | ✅ Complete | ✅ 5 tests passing |
-| DistributedRefreshLock | ✅ Complete | ✅ Included |
-| Logger | ✅ Complete | ✅ Functional |
-| MetricsCollector | ✅ Complete | ✅ Functional |
-| BaseConnector | ✅ Complete | ✅ Functional |
-| Normalizer | ✅ Complete | ✅ Functional |
-| AuthCore | ✅ Complete | ✅ Functional |
-| HttpCore (v1.1) | ✅ Complete | ✅ Functional |
-| GitHubConnector | ✅ Complete | ✅ Example |
-| SDK Manager (v1.1) | ✅ Complete | ✅ 1 test passing |
-
-## 🚧 Next Steps
-
-### Immediate
-1. Add remaining provider connectors (Google, Reddit, Twitter, RSS)
-2. Add more integration tests (token refresh, ETag caching, rate limiting)
-3. Add Docker configuration
-
-### Phase 2
-1. Implement Device Code flow (deferred from v0.1)
-2. Add OAuth1.0a full support for Twitter
-3. PostgreSQL token store testing
-
-### Phase 3
-1. Browser support (PKCE-only flows)
-2. Admin dashboard for token monitoring
-3. Production deployment examples
-
 ## 📄 License
 
 MIT
@@ -326,11 +283,3 @@ MIT
 ## 👥 Contributing
 
 See [AGENTS.md](AGENTS.md) for development guidelines and [docs/](docs/) for design documentation.
-
----
-
-**Version:** 1.0.0  
-**Build Status:** ✅ Passing  
-**Test Status:** ✅ 6/6 tests passing  
-**Lint Status:** ✅ Clean (0 errors, 7 warnings)
-

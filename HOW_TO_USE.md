@@ -811,10 +811,4 @@ const token = await sdk.getToken(userId, provider);
 
 ---
 
-**Version:** 1.0.0
-**Build Status:** ✅ Passing
-**Test Status:** ✅ 6/6 tests passing
-
----
-
-This guide provides everything needed to integrate the OAuth Connector SDK into your application. For production deployments, be sure to review the security best practices and scaling considerations sections.
+This guide provides everything needed to integrate the OAuth Connector SDK into your application. For production deployments, review the security best practices and scaling considerations sections.

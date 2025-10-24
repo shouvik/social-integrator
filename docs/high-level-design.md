@@ -1,22 +1,4 @@
-# OAuth Data Connector SDK - High-Level Design (HLD)
-**Version:** 1.1  
-**Date:** October 2025  
-**Based on:** PRD v1.2
-
----
-
-## Version 1.1 Updates
-
-**Critical Fixes Applied:**
-1. Token lifecycle corrected to support auto-refresh of expired tokens
-2. Distributed refresh locking via Redis to prevent concurrent refresh storms
-3. ETag-based conditional requests properly implemented
-4. Rate limiting fixed to enforce provider QPS limits
-5. All timestamps standardized to ISO 8601 strings
-
-**Implementation Status:** Design review complete. All blockers resolved. See LLD v1.1 Section 0 for detailed implementation notes.
-
----
+# OAuth Data Connector SDK - High-Level Design
 
 ## 1. Executive Summary
 
@@ -640,15 +622,3 @@ class SDKError extends Error {
 - ✅ < 1% token refresh failures
 - ✅ Horizontal scalability validated (10+ instances)
 - ✅ Security audit passing (OWASP Top 10)
-
----
-
-**Next Steps:**
-1. Review and approve HLD
-2. Proceed to Low-Level Design (LLD) with detailed class diagrams
-3. Create implementation roadmap with milestones
-
-**Author:** System Architect  
-**Document Version:** 1.0  
-**Date:** October 2025
-

@@ -1,8 +1,5 @@
 # OAuth Connector SDK - Troubleshooting Guide
 
-**Version:** 1.0  
-**Last Updated:** October 21, 2025
-
 This guide helps diagnose and resolve common issues when using the OAuth Connector SDK.
 
 ---
@@ -861,9 +858,3 @@ tail -f logs/app.log
 5. **Enable Metrics:**
    - View Grafana: http://localhost:3001
    - Check Prometheus: http://localhost:9091
-
----
-
-**Last Updated:** October 21, 2025  
-**Version:** 1.0
-

@@ -1,8 +1,5 @@
 # OAuth Connector SDK - Configuration Guide
 
-**Version:** 1.0  
-**Last Updated:** October 21, 2025
-
 This guide provides comprehensive documentation for all configuration options available in the OAuth Connector SDK.
 
 ---
@@ -676,9 +673,3 @@ try {
 - [Troubleshooting Guide](./troubleshooting.md) - Common issues and solutions
 - [Example Application](../examples/express-app/README.md) - Working example
 - [Deployment Guide](../README.md#docker-deployment) - Production deployment
-
----
-
-**Last Updated:** October 21, 2025  
-**Version:** 1.0
-

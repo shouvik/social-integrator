@@ -1,20 +1,4 @@
-# OAuth Data Connector SDK (JavaScript / TypeScript)
-**Version:** 1.2  
-**Date:** October 2025  
-
----
-
-## 0. What changed in v1.2
-**Reason:** You asked “Don’t these SDKs overlap? Why not combine them?”  
-**Answer:** Yes—many libraries duplicate responsibility (OAuth handling, HTTP, retries). v1.2 **consolidates** responsibilities into a single **AuthCore + HttpCore + TokenStore** so provider plugins don’t each pull their own stacks. Third‑party SDKs are still allowed where they add unique value (e.g., Octokit’s pagination), but **all tokens and transport** run through the unified cores.
-
-**Net impact**
-- One OAuth engine for all OAuth2/OIDC providers (Authorization Code + PKCE + Device Code).  
-- One HTTP + rate‑limit layer for all network calls.  
-- One TokenStore abstraction so every connector reads/writes tokens the same way.  
-- Provider SDKs become *optional adapters* instead of being “in charge.”
-
----
+# OAuth Data Connector SDK - Product Requirements
 
 ## 1. Purpose & Scope
 Create a reusable **TypeScript SDK** that unifies **auth, token storage, rate‑limited HTTP, and normalized data fetching** for: **Google (Gmail/Calendar), GitHub, Reddit, X/Twitter, RSS**, with a plugin system for more providers.
@@ -206,12 +190,6 @@ export class GithubConnector implements Connector {
 
 ## 12. Success Metrics
 - **Single** OAuth engine covers ≥ 95% of flows; OAuth1 used only when necessary.  
-- New provider integration ≤ **150 LOC** + tests.  
-- ≤ **1%** token refresh failures over 30 days.  
-- **p95** end‑to‑end fetch latency stable under configured limits.  
-
----
-
-**Author:** AI Product Strategist  
-**Revision:** 1.2  
-**Date:** October 2025
+- New provider integration ≤ **150 LOC** + tests.
+- ≤ **1%** token refresh failures over 30 days.
+- **p95** end‑to‑end fetch latency stable under configured limits.

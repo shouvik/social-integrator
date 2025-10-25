@@ -46,12 +46,17 @@ export class HttpCore {
     this.keepAlive = httpConfig.keepAlive ?? true;
     this.defaultTimeout = httpConfig.timeout ?? 30000;
 
-    this.axiosInstance = axios.create({
+    const axiosOptions: Parameters<typeof axios.create>[0] = {
       timeout: this.defaultTimeout,
       httpAgent: new http.Agent({ keepAlive: this.keepAlive }),
       httpsAgent: new https.Agent({ keepAlive: this.keepAlive }),
-      proxy: httpConfig.proxy ?? false,
-    });
+    };
+
+    if (httpConfig.proxy !== undefined) {
+      axiosOptions.proxy = httpConfig.proxy;
+    }
+
+    this.axiosInstance = axios.create(axiosOptions);
 
     this.setupInterceptors();
     this.initializeRateLimiters();

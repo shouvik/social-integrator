@@ -8,7 +8,7 @@ export interface RSSFetchParams extends FetchParams {
    * RSS feed URL to fetch
    */
   feedUrl: string;
-  
+
   /**
    * Maximum number of items to return
    */
@@ -35,4 +35,3 @@ export interface RSSFeedItem {
     length?: string;
   };
 }
-

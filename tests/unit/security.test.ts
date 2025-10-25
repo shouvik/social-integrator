@@ -14,14 +14,14 @@ import type { StoredTokenSet } from '../../src/core/token/types';
 
 describe('Security: Log Redaction', () => {
   let logger: Logger;
-  let logSpy: any;
 
   beforeEach(() => {
     logger = new Logger({ level: 'debug', format: 'json' });
-    logSpy = vi.spyOn(logger as any, 'log');
   });
 
   it('should redact access tokens from logs', () => {
+    const logSpy = vi.spyOn(logger['logger'], 'info');
+
     const sensitiveData = {
       userId: 'user-123',
       provider: 'github',
@@ -31,7 +31,9 @@ describe('Security: Log Redaction', () => {
 
     logger.info('Token operation', sensitiveData);
 
-    const logOutput = logSpy.mock.calls[0]?.[1];
+    // Winston logger passes (message, meta) as separate arguments
+    const logCall = logSpy.mock.calls[0];
+    const logOutput = logCall[1];
 
     // Ensure token is NOT in plaintext
     expect(JSON.stringify(logOutput)).not.toContain('gho_secret_access_token');
@@ -40,9 +42,12 @@ describe('Security: Log Redaction', () => {
     // Ensure other fields are present
     expect(logOutput.userId).toBe('user-123');
     expect(logOutput.provider).toBe('github');
+    expect(logOutput.accessToken).toBe('[REDACTED]');
   });
 
   it('should redact refresh tokens from logs', () => {
+    const debugSpy = vi.spyOn(logger['logger'], 'debug');
+
     const sensitiveData = {
       refreshToken: 'refresh_secret_token_abcdef',
       expiresAt: new Date().toISOString(),
@@ -50,14 +55,18 @@ describe('Security: Log Redaction', () => {
 
     logger.debug('Token stored', sensitiveData);
 
-    const logOutput = logSpy.mock.calls[0]?.[1];
+    const logCall = debugSpy.mock.calls[0];
+    const logOutput = logCall[1];
 
     // Token should be redacted
     expect(JSON.stringify(logOutput)).not.toContain('refresh_secret_token');
     expect(JSON.stringify(logOutput)).not.toContain('abcdef');
+    expect(logOutput.refreshToken).toBe('[REDACTED]');
   });
 
   it('should redact client secrets from logs', () => {
+    const logSpy = vi.spyOn(logger['logger'], 'info');
+
     const config = {
       provider: 'github',
       clientId: 'public_client_id',
@@ -67,16 +76,20 @@ describe('Security: Log Redaction', () => {
 
     logger.info('Provider configured', config);
 
-    const logOutput = logSpy.mock.calls[0]?.[1];
+    const logCall = logSpy.mock.calls[0];
+    const logOutput = logCall[1];
 
     // Secret should be redacted
     expect(JSON.stringify(logOutput)).not.toContain('super_secret_client_secret');
+    expect(logOutput.clientSecret).toBe('[REDACTED]');
 
     // Public info should be present
     expect(logOutput.clientId).toBe('public_client_id');
   });
 
   it('should allow safe logging of token metadata', () => {
+    const logSpy = vi.spyOn(logger['logger'], 'info');
+
     const tokenMetadata = {
       userId: 'user-123',
       provider: 'github',
@@ -87,7 +100,8 @@ describe('Security: Log Redaction', () => {
 
     logger.info('Token metadata', tokenMetadata);
 
-    const logOutput = logSpy.mock.calls[0]?.[1];
+    const logCall = logSpy.mock.calls[0];
+    const logOutput = logCall[1];
 
     // All metadata should be present
     expect(logOutput.userId).toBe('user-123');
@@ -122,7 +136,8 @@ describe('Security: Token Encryption', () => {
     expect(encrypted).not.toContain('gho_secret_refresh');
 
     // Should be able to decrypt
-    const decrypted = encryption.decrypt(encrypted);
+    const decryptedJson = encryption.decrypt(encrypted);
+    const decrypted = JSON.parse(decryptedJson);
     expect(decrypted.accessToken).toBe('gho_secret_token');
     expect(decrypted.refreshToken).toBe('gho_secret_refresh');
   });
@@ -155,8 +170,8 @@ describe('Security: Token Encryption', () => {
     expect(encryptedWithKey1).not.toBe(encryptedWithKey2);
 
     // Each can decrypt its own
-    const decrypted1 = encryption1.decrypt(encryptedWithKey1);
-    const decrypted2 = encryption2.decrypt(encryptedWithKey2);
+    const decrypted1 = JSON.parse(encryption1.decrypt(encryptedWithKey1));
+    const decrypted2 = JSON.parse(encryption2.decrypt(encryptedWithKey2));
 
     expect(decrypted1.accessToken).toBe(tokenSet.accessToken);
     expect(decrypted2.accessToken).toBe(tokenSet.accessToken);
@@ -206,8 +221,8 @@ describe('Security: Token Encryption', () => {
     expect(encrypted1).not.toBe(encrypted2);
 
     // But both decrypt to same plaintext
-    const decrypted1 = encryption.decrypt(encrypted1);
-    const decrypted2 = encryption.decrypt(encrypted2);
+    const decrypted1 = JSON.parse(encryption.decrypt(encrypted1));
+    const decrypted2 = JSON.parse(encryption.decrypt(encrypted2));
 
     expect(decrypted1.accessToken).toBe(decrypted2.accessToken);
   });

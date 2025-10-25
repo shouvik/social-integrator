@@ -77,8 +77,10 @@ describe('GitHub OAuth Flow Contract', () => {
   });
 
   it('should exchange authorization code for tokens', async () => {
-    // Step 1: Generate auth URL (stores code_verifier)
-    await sdk.connect('github', testUserId);
+    // Step 1: Generate auth URL (stores code_verifier) and extract state
+    const authUrl = await sdk.connect('github', testUserId);
+    const url = new URL(authUrl);
+    const actualState = url.searchParams.get('state')!;
 
     // Step 2: Mock token exchange
     nock('https://github.com').post('/login/oauth/access_token').reply(200, {
@@ -87,10 +89,10 @@ describe('GitHub OAuth Flow Contract', () => {
       scope: 'user,repo',
     });
 
-    // Step 3: Handle callback
+    // Step 3: Handle callback with actual state
     const callbackParams = new URLSearchParams({
       code: 'test_auth_code',
-      state: 'test_state',
+      state: actualState,
     });
 
     await sdk.handleCallback('github', testUserId, callbackParams);
@@ -121,8 +123,10 @@ describe('GitHub OAuth Flow Contract', () => {
   });
 
   it('should refresh expired access token automatically', async () => {
-    // Step 1: Store expired token
-    await sdk.connect('github', testUserId);
+    // Step 1: Store expired token - extract actual state
+    const authUrl = await sdk.connect('github', testUserId);
+    const url = new URL(authUrl);
+    const actualState = url.searchParams.get('state')!;
 
     nock('https://github.com').post('/login/oauth/access_token').reply(200, {
       access_token: 'gho_old_token',
@@ -132,7 +136,7 @@ describe('GitHub OAuth Flow Contract', () => {
       scope: 'user,repo',
     });
 
-    const callbackParams = new URLSearchParams({ code: 'test_code', state: 'test_state' });
+    const callbackParams = new URLSearchParams({ code: 'test_code', state: actualState });
     await sdk.handleCallback('github', testUserId, callbackParams);
 
     // Wait for token to expire
@@ -160,7 +164,9 @@ describe('GitHub OAuth Flow Contract', () => {
   });
 
   it('should handle OAuth errors gracefully', async () => {
-    await sdk.connect('github', testUserId);
+    const authUrl = await sdk.connect('github', testUserId);
+    const url = new URL(authUrl);
+    const actualState = url.searchParams.get('state')!;
 
     // Mock token exchange failure
     nock('https://github.com').post('/login/oauth/access_token').reply(400, {
@@ -168,14 +174,16 @@ describe('GitHub OAuth Flow Contract', () => {
       error_description: 'The authorization code is invalid or expired',
     });
 
-    const callbackParams = new URLSearchParams({ code: 'invalid_code', state: 'test_state' });
+    const callbackParams = new URLSearchParams({ code: 'invalid_code', state: actualState });
 
     await expect(sdk.handleCallback('github', testUserId, callbackParams)).rejects.toThrow();
   });
 
   it('should handle rate limiting with 429 response', async () => {
-    // Setup token
-    await sdk.connect('github', testUserId);
+    // Setup token - extract actual state
+    const authUrl = await sdk.connect('github', testUserId);
+    const url = new URL(authUrl);
+    const actualState = url.searchParams.get('state')!;
 
     nock('https://github.com').post('/login/oauth/access_token').reply(200, {
       access_token: 'gho_test_token',
@@ -183,7 +191,7 @@ describe('GitHub OAuth Flow Contract', () => {
       scope: 'user,repo',
     });
 
-    const callbackParams = new URLSearchParams({ code: 'test_code', state: 'test_state' });
+    const callbackParams = new URLSearchParams({ code: 'test_code', state: actualState });
     await sdk.handleCallback('github', testUserId, callbackParams);
 
     // Mock rate limit response, then success

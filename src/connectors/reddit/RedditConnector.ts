@@ -4,13 +4,13 @@ import type { RedditFetchParams, RedditListingResponse } from './types';
 
 /**
  * Reddit OAuth connector
- * 
+ *
  * Supports fetching:
  * - User's saved posts/comments
  * - User's submitted posts
  * - User's comments
  * - Subreddit posts
- * 
+ *
  * @example
  * ```typescript
  * const sdk = await ConnectorSDK.init(config);
@@ -23,7 +23,7 @@ export class RedditConnector extends BaseConnector {
 
   /**
    * Fetches data from Reddit API
-   * 
+   *
    * @param userId - User identifier
    * @param params - Reddit-specific fetch parameters
    * @returns Array of normalized items
@@ -36,7 +36,8 @@ export class RedditConnector extends BaseConnector {
     const sort = params?.sort ?? 'new';
 
     // Reddit requires a specific User-Agent format: platform:app_id:version (by /u/username)
-    const userAgent = process.env.REDDIT_USER_AGENT || 'web:oauth-connector-sdk:v1.0.0 (by /u/oauth-connector)';
+    const userAgent =
+      process.env.REDDIT_USER_AGENT || 'web:oauth-connector-sdk:v1.0.0 (by /u/oauth-connector)';
 
     // Build URL based on type
     let url: string;
@@ -50,7 +51,7 @@ export class RedditConnector extends BaseConnector {
         url: 'https://oauth.reddit.com/api/v1/me',
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${accessToken}`,
+          Authorization: `Bearer ${accessToken}`,
           'User-Agent': userAgent,
         },
       });
@@ -73,7 +74,7 @@ export class RedditConnector extends BaseConnector {
           url = `https://oauth.reddit.com/user/${redditUsername}/saved`;
       }
     }
-    
+
     // Build query parameters
     const queryParams: Record<string, any> = {
       limit: limit,
@@ -90,54 +91,66 @@ export class RedditConnector extends BaseConnector {
     if (params?.subreddit) {
       queryParams.sort = sort;
     }
-    
+
     // Make request with ETag caching
     const response = await this.deps.http.request<RedditListingResponse>({
       url,
       method: 'GET',
       headers: {
-        'Authorization': `Bearer ${accessToken}`,
+        Authorization: `Bearer ${accessToken}`,
         'User-Agent': userAgent,
       },
       query: queryParams,
       etagKey: {
         userId,
         provider: this.name,
-        resource: `${type}:${params?.subreddit ?? 'user'}:${sort}`
+        resource: `${type}:${params?.subreddit ?? 'user'}:${sort}`,
       },
     });
-    
+
     // Reddit always returns data, must normalize
     const listing = response.data;
     if (!listing?.data?.children) {
       return [];
     }
-    
+
     // Extract raw items from Reddit's nested structure
     const rawItems = listing.data.children.map((child) => child.data);
-    
+
     // Normalize using the centralized normalizer
     const normalized = this.deps.normalizer.normalize('reddit', userId, rawItems);
-    
+
     this.deps.logger.info('Reddit fetch completed', {
       userId,
       type,
       itemCount: normalized.length,
       hasMore: !!listing.data.after,
     });
-    
+
     return normalized;
+  }
+
+  /**
+   * Get Reddit-specific OAuth parameters for authorization URL
+   */
+  getConnectOptions(options?: any): any {
+    return {
+      ...options,
+      extraParams: {
+        duration: 'permanent', // Required for refresh tokens
+        ...options?.extraParams,
+      },
+    };
   }
 
   /**
    * Get redirect URI for Reddit OAuth
    */
   protected getRedirectUri(): string {
-    const uri = process.env.REDDIT_REDIRECT_URI;
-    if (!uri) {
-      throw new Error('REDDIT_REDIRECT_URI environment variable is required');
+    const config = this.deps.auth.getProviderConfig(this.name);
+    if (!('redirectUri' in config) || !config.redirectUri) {
+      throw new Error(`No redirectUri configured for ${this.name}`);
     }
-    return uri;
+    return config.redirectUri;
   }
 }
-

@@ -74,14 +74,14 @@ export class ApiError extends SDKError {
 
 export class ApiClientError extends ApiError {
   constructor(message: string, details?: Record<string, unknown>) {
-    super(message, details?.status as number ?? 400, details);
+    super(message, (details?.status as number) ?? 400, details);
     this.code = 'API_CLIENT_ERROR';
   }
 }
 
 export class ApiServerError extends ApiError {
   constructor(message: string, details?: Record<string, unknown>) {
-    super(message, details?.status as number ?? 500, details);
+    super(message, (details?.status as number) ?? 500, details);
     this.code = 'API_SERVER_ERROR';
   }
 }
@@ -117,4 +117,3 @@ export class CircuitBreakerOpenError extends NetworkError {
     this.code = 'CIRCUIT_BREAKER_OPEN';
   }
 }
-

@@ -38,7 +38,7 @@
     "example:start": "cd examples/express-app && npm run dev",
     "example:auth-urls": "tsx examples/express-app/scripts/print-auth-urls.ts",
     "example": "npm run example:up && npm run example:auth-urls",
-    "prepare": "husky"
+    "prepare": "husky || true"
   },
   "dependencies": {
     "@keyv/postgres": "^2.1.0",

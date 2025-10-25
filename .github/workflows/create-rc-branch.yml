@@ -91,6 +91,10 @@ jobs:
         run: |
           echo "Creating/updating RC branch..."
 
+          # Discard any local changes (e.g., yarn.lock modifications from npm ci)
+          git reset --hard HEAD
+          git clean -fd
+
           # Check if RC branch exists remotely
           if git ls-remote --heads origin ${{ env.RC_BRANCH }} | grep -q ${{ env.RC_BRANCH }}; then
             echo "RC branch exists remotely, fetching..."

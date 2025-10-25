@@ -24,6 +24,7 @@ A step-by-step guide for developers to integrate and use the OAuth Data Connecto
 ## 1. Prerequisites
 
 ### System Requirements
+
 - **Node.js:** 20.0.0 or higher (LTS recommended)
 - **Package Manager:** npm or yarn
 - **Optional Services:**
@@ -32,6 +33,7 @@ A step-by-step guide for developers to integrate and use the OAuth Data Connecto
   - Docker & Docker Compose (for containerized deployment)
 
 ### Supported Providers
+
 - **GitHub** - Starred repos, user repos, issues
 - **Google** - Gmail, Calendar (coming soon)
 - **Reddit** - Saved posts, user history
@@ -42,14 +44,60 @@ A step-by-step guide for developers to integrate and use the OAuth Data Connecto
 
 ## 2. Installation
 
+### Install from GitHub (Recommended)
+
+Install directly from GitHub with pre-built binaries:
+
+```bash
+# Install from main branch (stable releases)
+npm install github:shouvik/social-integrator
+
+# Install from release candidate branch (latest features + pre-built dist/)
+npm install github:shouvik/social-integrator#rc
+
+# Or using yarn
+yarn add github:shouvik/social-integrator#rc
+```
+
+**Install from specific versions:**
+
+```bash
+# Install from specific commit (if you need a specific build)
+npm install github:shouvik/social-integrator#8a32d64
+
+# Install from specific tag/release
+npm install github:shouvik/social-integrator#v1.0.0
+```
+
+**Add to package.json:**
+
+```json
+{
+  "dependencies": {
+    "oauth-connector-sdk": "github:shouvik/social-integrator#rc"
+  }
+}
+```
+
+> **Note:** The `rc` branch contains pre-built binaries in the `dist/` folder, making installation faster and eliminating the need for users to build from source.
+
+### Branch Strategy
+
+- **`main`** - Stable releases with pre-built `dist/` folder
+- **`rc`** - Release candidate branch with latest features and pre-built binaries
+- **`develop`** - Development branch (requires building from source)
+
 ### Install from Source
 
-Since this SDK is in development, install from the repository:
+For development or if you need to modify the SDK:
 
 ```bash
 # Clone the repository
-git clone <repository-url>
-cd oauth-connector-sdk
+git clone https://github.com/shouvik/social-integrator.git
+cd social-integrator
+
+# Switch to development branch
+git checkout develop
 
 # Install dependencies
 npm install
@@ -73,7 +121,7 @@ npm link oauth-connector-sdk
 Or install directly from the built package:
 
 ```bash
-npm install /path/to/oauth-connector-sdk
+npm install /path/to/social-integrator
 ```
 
 ---
@@ -210,8 +258,8 @@ const sdk = await ConnectorSDK.init({
     backend: 'memory',
     encryption: {
       key: process.env.ENCRYPTION_KEY!,
-      algorithm: 'aes-256-gcm'
-    }
+      algorithm: 'aes-256-gcm',
+    },
   },
 
   // HTTP client configuration
@@ -220,8 +268,8 @@ const sdk = await ConnectorSDK.init({
       maxRetries: 3,
       baseDelay: 1000,
       maxDelay: 10000,
-      retryableStatusCodes: [429, 500, 502, 503, 504]
-    }
+      retryableStatusCodes: [429, 500, 502, 503, 504],
+    },
   },
 
   // Rate limits per provider
@@ -231,7 +279,7 @@ const sdk = await ConnectorSDK.init({
     reddit: { qps: 1, concurrency: 2 },
     twitter: { qps: 5, concurrency: 3 },
     x: { qps: 5, concurrency: 3 },
-    rss: { qps: 1, concurrency: 2 }
+    rss: { qps: 1, concurrency: 2 },
   },
 
   // Provider configurations (only include the ones you need)
@@ -243,20 +291,20 @@ const sdk = await ConnectorSDK.init({
       tokenEndpoint: 'https://github.com/login/oauth/access_token',
       scopes: ['user', 'repo'],
       redirectUri: `${process.env.BASE_URL || 'http://localhost:3000'}/callback/github`,
-      usePKCE: true
-    }
+      usePKCE: true,
+    },
   },
 
   // Optional: Metrics (Prometheus)
   metrics: {
     enabled: true,
-    port: 9090
+    port: 9090,
   },
 
   // Optional: Logging
   logging: {
-    level: 'info'
-  }
+    level: 'info',
+  },
 });
 
 console.log('✅ SDK initialized successfully');
@@ -271,10 +319,10 @@ const sdk = await ConnectorSDK.init({
     url: process.env.REDIS_URL!,
     encryption: {
       key: process.env.ENCRYPTION_KEY!,
-      algorithm: 'aes-256-gcm'
+      algorithm: 'aes-256-gcm',
     },
-    preRefreshMarginMinutes: 10,  // Refresh tokens 10 min before expiry
-    expiredTokenBufferMinutes: 5  // Keep expired tokens for 5 min to allow refresh
+    preRefreshMarginMinutes: 10, // Refresh tokens 10 min before expiry
+    expiredTokenBufferMinutes: 5, // Keep expired tokens for 5 min to allow refresh
   },
 
   // ... rest of config same as above
@@ -322,6 +370,7 @@ app.get('/connect/:provider', async (req, res) => {
 ```
 
 **What happens:**
+
 1. SDK generates a PKCE code challenge
 2. SDK creates a state parameter for CSRF protection
 3. SDK stores state and code_verifier temporarily
@@ -360,6 +409,7 @@ app.get('/callback/:provider', async (req, res) => {
 ```
 
 **What happens:**
+
 1. SDK validates the state parameter (CSRF check)
 2. SDK exchanges the authorization code for access/refresh tokens using PKCE
 3. SDK encrypts and stores tokens in configured backend (memory/Redis/Postgres)
@@ -377,10 +427,10 @@ Once connected, fetch normalized data from any provider:
 const starred = await sdk.fetch('github', userId, {
   type: 'starred',
   limit: 50,
-  page: 1
+  page: 1,
 });
 
-starred.forEach(item => {
+starred.forEach((item) => {
   console.log(`⭐ ${item.title} by ${item.author}`);
   console.log(`   ${item.link}`);
   console.log(`   Created: ${item.publishedAt}`);
@@ -393,10 +443,10 @@ starred.forEach(item => {
 const emails = await sdk.fetch('google', userId, {
   service: 'gmail',
   query: 'is:unread',
-  limit: 20
+  limit: 20,
 });
 
-emails.forEach(item => {
+emails.forEach((item) => {
   console.log(`📧 ${item.title}`);
   console.log(`   From: ${item.author}`);
   console.log(`   ${item.snippet}`);
@@ -408,10 +458,10 @@ emails.forEach(item => {
 ```typescript
 const saved = await sdk.fetch('reddit', userId, {
   type: 'saved',
-  limit: 25
+  limit: 25,
 });
 
-saved.forEach(item => {
+saved.forEach((item) => {
   console.log(`💾 ${item.title}`);
   console.log(`   r/${item.metadata?.subreddit} • Score: ${item.metadata?.score}`);
 });
@@ -422,10 +472,10 @@ saved.forEach(item => {
 ```typescript
 const tweets = await sdk.fetch('twitter', userId, {
   type: 'timeline',
-  maxResults: 10
+  maxResults: 10,
 });
 
-tweets.forEach(item => {
+tweets.forEach((item) => {
   console.log(`🐦 ${item.title}`);
   console.log(`   ${item.text}`);
   console.log(`   ${item.publishedAt}`);
@@ -438,10 +488,10 @@ tweets.forEach(item => {
 // RSS doesn't require OAuth - just fetch directly
 const news = await sdk.fetch('rss', userId, {
   feedUrl: 'https://hnrss.org/frontpage',
-  limit: 15
+  limit: 15,
 });
 
-news.forEach(item => {
+news.forEach((item) => {
   console.log(`📰 ${item.title}`);
   console.log(`   ${item.link}`);
 });
@@ -454,14 +504,14 @@ All providers return data in the same `NormalizedItem[]` format:
 ```typescript
 interface NormalizedItem {
   id: string;
-  type: string;              // 'repository', 'email', 'post', 'tweet', 'article'
+  type: string; // 'repository', 'email', 'post', 'tweet', 'article'
   title: string;
   text?: string;
   snippet?: string;
   link: string;
   author?: string;
-  publishedAt: string;       // ISO 8601 timestamp
-  metadata?: Record<string, any>;  // Provider-specific extra data
+  publishedAt: string; // ISO 8601 timestamp
+  metadata?: Record<string, any>; // Provider-specific extra data
 }
 ```
 
@@ -474,6 +524,7 @@ The SDK handles tokens automatically, but you can also manage them manually.
 ### Auto Token Refresh
 
 **The SDK automatically refreshes tokens** when:
+
 - Token is expired
 - Token expires within 5 minutes (configurable via `preRefreshMarginMinutes`)
 
@@ -500,6 +551,7 @@ if (token) {
 ### Refresh Deduplication
 
 The SDK prevents multiple concurrent refreshes for the same user/provider:
+
 - **Local deduplication:** In-memory lock within single SDK instance
 - **Distributed deduplication:** Redis-based lock across multiple instances
 
@@ -541,6 +593,7 @@ console.log('   - Tokens deleted from storage');
 ```
 
 **What happens:**
+
 1. SDK calls provider's token revocation endpoint
 2. SDK deletes encrypted tokens from storage
 3. User must re-authorize to access provider again
@@ -591,6 +644,7 @@ logging: {
 ```
 
 **Log Levels:**
+
 - `error` - Only errors
 - `warn` - Errors + warnings
 - `info` - Production default (errors + warnings + info)
@@ -605,7 +659,7 @@ app.get('/health', async (req, res) => {
   const health = {
     status: 'healthy',
     timestamp: new Date().toISOString(),
-    uptime: process.uptime()
+    uptime: process.uptime(),
   };
 
   // Optional: Check Redis connection
@@ -691,24 +745,29 @@ docker-compose down
 ### Common Issues
 
 **"Invalid redirect_uri" error:**
+
 - Ensure redirect URI in SDK config matches provider OAuth app settings exactly
 - Check protocol (http vs https), domain, port, and path
 
 **"Token refresh failed":**
+
 - User may have revoked access on provider's website
 - Refresh token may be expired
 - Prompt user to reconnect: `await sdk.connect(provider, userId)`
 
 **"No token found" error:**
+
 - User hasn't completed OAuth flow yet
 - Redirect user to: `await sdk.connect(provider, userId)`
 
 **"429 Too Many Requests":**
+
 - Reduce `qps` in rate limits configuration
 - Check provider's API rate limits
 - Monitor `rate_limit_queue_size` metric
 
 **Redis connection failed:**
+
 ```bash
 # Check Redis is running
 redis-cli ping  # Should return: PONG
@@ -721,7 +780,7 @@ docker run -d -p 6379:6379 redis:7-alpine
 
 ```typescript
 logging: {
-  level: 'debug'  // Shows all HTTP requests, token operations, etc.
+  level: 'debug'; // Shows all HTTP requests, token operations, etc.
 }
 ```
 
@@ -730,12 +789,23 @@ logging: {
 ```typescript
 // Test connection with a single provider
 const sdk = await ConnectorSDK.init({
-  tokenStore: { backend: 'memory', encryption: { /* ... */ } },
-  http: { retry: { /* ... */ } },
+  tokenStore: {
+    backend: 'memory',
+    encryption: {
+      /* ... */
+    },
+  },
+  http: {
+    retry: {
+      /* ... */
+    },
+  },
   rateLimits: { github: { qps: 5, concurrency: 2 } },
   providers: {
-    github: { /* ... only GitHub config ... */ }
-  }
+    github: {
+      /* ... only GitHub config ... */
+    },
+  },
 });
 
 // Test OAuth flow
@@ -759,6 +829,7 @@ npx vitest run tests/unit/TokenStore.test.ts
 ### Check Provider Status
 
 If APIs are failing, check provider status pages:
+
 - **GitHub:** https://www.githubstatus.com/
 - **Google:** https://status.cloud.google.com/
 - **Reddit:** https://www.redditstatus.com/
@@ -801,13 +872,13 @@ const token = await sdk.getToken(userId, provider);
 
 ### Supported Providers
 
-| Provider | Type | OAuth Required | Example Fetch Params |
-|----------|------|----------------|----------------------|
-| `github` | Git hosting | Yes (OAuth2) | `{ type: 'starred', limit: 50 }` |
-| `google` | Email/Calendar | Yes (OAuth2) | `{ service: 'gmail', query: 'is:unread' }` |
-| `reddit` | Social | Yes (OAuth2) | `{ type: 'saved', limit: 25 }` |
-| `twitter` | Social | Yes (OAuth2) | `{ type: 'timeline', maxResults: 10 }` |
-| `rss` | Feeds | No | `{ feedUrl: 'https://...', limit: 15 }` |
+| Provider  | Type           | OAuth Required | Example Fetch Params                       |
+| --------- | -------------- | -------------- | ------------------------------------------ |
+| `github`  | Git hosting    | Yes (OAuth2)   | `{ type: 'starred', limit: 50 }`           |
+| `google`  | Email/Calendar | Yes (OAuth2)   | `{ service: 'gmail', query: 'is:unread' }` |
+| `reddit`  | Social         | Yes (OAuth2)   | `{ type: 'saved', limit: 25 }`             |
+| `twitter` | Social         | Yes (OAuth2)   | `{ type: 'timeline', maxResults: 10 }`     |
+| `rss`     | Feeds          | No             | `{ feedUrl: 'https://...', limit: 15 }`    |
 
 ---
 

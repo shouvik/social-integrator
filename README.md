@@ -6,7 +6,23 @@ A unified TypeScript SDK for managing OAuth flows, token lifecycle, and normaliz
 
 ### Installation
 
+#### Option 1: Install from GitHub (Pre-built)
+
+Install the latest version directly from the RC branch with pre-built binaries:
+
 ```bash
+npm install github:shouvik/oauth-connector-sdk#rc
+```
+
+This is the fastest way to get started without needing to build the project locally.
+
+#### Option 2: Build from Source
+
+Clone and build the project locally:
+
+```bash
+git clone https://github.com/shouvik/oauth-connector-sdk.git
+cd oauth-connector-sdk
 npm install
 npm run build
 ```

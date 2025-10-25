@@ -95,7 +95,12 @@ jobs:
           if git ls-remote --heads origin ${{ env.RC_BRANCH }} | grep -q ${{ env.RC_BRANCH }}; then
             echo "RC branch exists remotely, fetching..."
             git fetch origin ${{ env.RC_BRANCH }}
-            git checkout -b ${{ env.RC_BRANCH }} origin/${{ env.RC_BRANCH }} || git checkout ${{ env.RC_BRANCH }}
+
+            # Delete local RC branch if it exists
+            git branch -D ${{ env.RC_BRANCH }} 2>/dev/null || true
+
+            # Create fresh local RC branch from remote
+            git checkout -b ${{ env.RC_BRANCH }} origin/${{ env.RC_BRANCH }}
           else
             echo "RC branch does not exist, creating new branch..."
             git checkout -b ${{ env.RC_BRANCH }}

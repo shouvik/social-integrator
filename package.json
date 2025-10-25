@@ -68,6 +68,7 @@
     "@typescript-eslint/eslint-plugin": "^6.15.0",
     "@typescript-eslint/parser": "^6.15.0",
     "@vitest/coverage-v8": "^1.0.4",
+    "conventional-changelog-conventionalcommits": "^9.1.0",
     "eslint": "^8.55.0",
     "husky": "^9.1.7",
     "lint-staged": "^16.2.6",
@@ -80,8 +81,8 @@
     "zod-to-json-schema": "^3.24.6"
   },
   "optionalDependencies": {
-    "@octokit/core": "^5.0.2",
-    "@octokit/plugin-retry": "^6.0.1",
+    "@octokit/core": "^7.0.0",
+    "@octokit/plugin-retry": "^8.0.0",
     "twitter-api-v2": "^1.15.2"
   },
   "engines": {

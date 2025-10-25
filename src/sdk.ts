@@ -4,7 +4,7 @@ import type { ProviderName, NormalizedItem } from './core/normalizer/types';
 import type { TokenSet, TokenStoreConfig } from './core/token/types';
 import type { ConnectOptions, OAuth2Config } from './core/auth/types';
 import type { FetchParams, Connector, CoreDeps } from './connectors/types';
-import type { RetryConfig, RateLimitConfig } from './core/http/types';
+import type { HttpCoreConfig, RateLimitConfig } from './core/http/types';
 import { AuthCore } from './core/auth/AuthCore';
 import { HttpCore } from './core/http/HttpCore';
 import { TokenStore } from './core/token/TokenStore';
@@ -21,11 +21,7 @@ import { validateConfig } from './config/ConfigValidator';
 
 export interface InitConfig {
   tokenStore: TokenStoreConfig;
-  http: {
-    timeout?: number;
-    retry: RetryConfig;
-    keepAlive?: boolean;
-  };
+  http: HttpCoreConfig;
   rateLimits: Record<ProviderName, RateLimitConfig>;
   providers: Partial<Record<ProviderName, OAuth2Config>>;
   metrics?: MetricsConfig;
@@ -51,7 +47,7 @@ export class ConnectorSDK {
     const tokens = new TokenStore(config.tokenStore, logger, configuredProviders);
 
     const auth = new AuthCore(config.providers as Record<ProviderName, OAuth2Config>, logger);
-    const http = new HttpCore(config.rateLimits, config.http.retry, metrics, logger);
+    const http = new HttpCore(config.rateLimits, config.http, metrics, logger);
     const refreshLock = new DistributedRefreshLock(
       config.tokenStore.backend === 'redis' ? config.tokenStore.url : undefined,
       logger

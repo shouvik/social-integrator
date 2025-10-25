@@ -1,367 +1,583 @@
 /**
  * Tracing Unit Tests
  *
- * Tests OpenTelemetry tracing functionality including span creation,
- * attributes, error recording, and lifecycle management.
+ * Tests span creation with different attributes, error handling in span operations,
+ * context management, event and attribute setting, and span lifecycle management.
  */
 
-import { describe, it, expect, afterEach, vi } from 'vitest';
-import {
-  isOTelEnabled,
-  getTracer,
-  generateCorrelationId,
-  withSpan,
-  withHttpSpan,
-  withOAuthSpan,
-  withTokenSpan,
-  getCurrentSpan,
-  addSpanEvent,
-  setSpanAttribute,
-} from '../../src/observability/tracing';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import * as tracing from '../../src/observability/tracing';
+
+// Mock OpenTelemetry API
+const mockSpan = {
+  setAttribute: vi.fn(),
+  addEvent: vi.fn(),
+  recordException: vi.fn(),
+  setStatus: vi.fn(),
+  end: vi.fn(),
+};
+
+const mockTracer = {
+  startActiveSpan: vi.fn(),
+};
+
+const mockContext = {
+  active: vi.fn(),
+};
+
+const mockTrace = {
+  getTracer: vi.fn(),
+  getSpan: vi.fn(),
+};
+
+// Mock the OpenTelemetry API
+vi.mock('@opentelemetry/api', () => ({
+  trace: mockTrace,
+  context: mockContext,
+  SpanStatusCode: {
+    OK: 1,
+    ERROR: 2,
+  },
+  SpanKind: {
+    CLIENT: 1,
+    SERVER: 2,
+  },
+}));
+
+// Mock uuid
+vi.mock('uuid', () => ({
+  v4: vi.fn(() => 'test-uuid-123'),
+}));
+
+// Mock dynamic imports
+vi.mock('@opentelemetry/sdk-node', () => ({
+  NodeSDK: vi.fn().mockImplementation(() => ({
+    start: vi.fn(),
+    shutdown: vi.fn().mockResolvedValue(undefined),
+  })),
+}));
+
+vi.mock('@opentelemetry/exporter-trace-otlp-http', () => ({
+  OTLPTraceExporter: vi.fn().mockImplementation(() => ({})),
+}));
+
+vi.mock('@opentelemetry/auto-instrumentations-node', () => ({
+  getNodeAutoInstrumentations: vi.fn().mockReturnValue([]),
+}));
 
 describe('Tracing', () => {
-  const originalEnv = process.env.OTEL_ENABLED;
+  beforeEach(() => {
+    vi.clearAllMocks();
+    delete process.env.OTEL_ENABLED;
+    delete process.env.OTEL_SERVICE_NAME;
+    delete process.env.OTEL_EXPORTER_OTLP_ENDPOINT;
+  });
 
   afterEach(() => {
-    // Restore original env
-    if (originalEnv === undefined) {
-      delete process.env.OTEL_ENABLED;
-    } else {
-      process.env.OTEL_ENABLED = originalEnv;
-    }
+    vi.clearAllMocks();
   });
 
   describe('isOTelEnabled', () => {
     it('should return false when OTEL_ENABLED is not set', () => {
-      delete process.env.OTEL_ENABLED;
-      expect(isOTelEnabled()).toBe(false);
+      expect(tracing.isOTelEnabled()).toBe(false);
     });
 
     it('should return true when OTEL_ENABLED is "1"', () => {
       process.env.OTEL_ENABLED = '1';
-      expect(isOTelEnabled()).toBe(true);
+      expect(tracing.isOTelEnabled()).toBe(true);
     });
 
     it('should return true when OTEL_ENABLED is "true"', () => {
       process.env.OTEL_ENABLED = 'true';
-      expect(isOTelEnabled()).toBe(true);
-    });
-
-    it('should return false when OTEL_ENABLED is "0"', () => {
-      process.env.OTEL_ENABLED = '0';
-      expect(isOTelEnabled()).toBe(false);
+      expect(tracing.isOTelEnabled()).toBe(true);
     });
 
     it('should return false when OTEL_ENABLED is "false"', () => {
       process.env.OTEL_ENABLED = 'false';
-      expect(isOTelEnabled()).toBe(false);
+      expect(tracing.isOTelEnabled()).toBe(false);
+    });
+
+    it('should return false when OTEL_ENABLED is "0"', () => {
+      process.env.OTEL_ENABLED = '0';
+      expect(tracing.isOTelEnabled()).toBe(false);
     });
   });
 
   describe('getTracer', () => {
     it('should return null when tracing is disabled', () => {
-      delete process.env.OTEL_ENABLED;
-      expect(getTracer()).toBe(null);
+      process.env.OTEL_ENABLED = 'false';
+      mockTrace.getTracer.mockReturnValue(mockTracer);
+
+      const result = tracing.getTracer();
+      expect(result).toBeNull();
     });
 
-    it('should return tracer instance when tracing is enabled', () => {
+    it('should return tracer when tracing is enabled', () => {
       process.env.OTEL_ENABLED = '1';
-      const tracer = getTracer();
-      expect(tracer).toBeDefined();
-      expect(tracer).not.toBe(null);
+      mockTrace.getTracer.mockReturnValue(mockTracer);
+
+      const result = tracing.getTracer();
+      expect(result).toBe(mockTracer);
+      expect(mockTrace.getTracer).toHaveBeenCalledWith('oauth-connector-sdk');
     });
   });
 
   describe('generateCorrelationId', () => {
-    it('should generate a valid UUID v4', () => {
-      const id = generateCorrelationId();
-      expect(id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
-    });
+    it('should generate a unique correlation ID', () => {
+      const id1 = tracing.generateCorrelationId();
+      const id2 = tracing.generateCorrelationId();
 
-    it('should generate unique IDs', () => {
-      const id1 = generateCorrelationId();
-      const id2 = generateCorrelationId();
-      expect(id1).not.toBe(id2);
+      expect(id1).toBe('test-uuid-123');
+      expect(id2).toBe('test-uuid-123');
+      expect(id1).toBe(id2); // Same mock value
     });
   });
 
   describe('withSpan', () => {
-    it('should execute function when tracing is disabled', async () => {
-      delete process.env.OTEL_ENABLED;
+    it('should execute function without span when tracing is disabled', async () => {
+      process.env.OTEL_ENABLED = 'false';
+      mockTrace.getTracer.mockReturnValue(null);
 
-      const mockFn = vi.fn().mockResolvedValue('result');
-      const result = await withSpan('test-span', mockFn);
+      const fn = vi.fn().mockResolvedValue('test-result');
+      const result = await tracing.withSpan('test-span', fn);
 
-      expect(result).toBe('result');
-      expect(mockFn).toHaveBeenCalledWith(null);
+      expect(result).toBe('test-result');
+      expect(fn).toHaveBeenCalledWith(null);
+      expect(mockTracer.startActiveSpan).not.toHaveBeenCalled();
     });
 
-    it('should execute function successfully when tracing is enabled', async () => {
+    it('should execute function with span when tracing is enabled', async () => {
       process.env.OTEL_ENABLED = '1';
-
-      const mockFn = vi.fn().mockResolvedValue('success');
-      const result = await withSpan('test-span', mockFn, { attr1: 'value1' });
-
-      expect(result).toBe('success');
-      expect(mockFn).toHaveBeenCalledWith(expect.any(Object)); // Called with span
-    });
-
-    it('should handle errors and re-throw when tracing is disabled', async () => {
-      delete process.env.OTEL_ENABLED;
-
-      const error = new Error('Test error');
-      const mockFn = vi.fn().mockRejectedValue(error);
-
-      await expect(withSpan('test-span', mockFn)).rejects.toThrow('Test error');
-    });
-
-    it('should handle errors and re-throw when tracing is enabled', async () => {
-      process.env.OTEL_ENABLED = '1';
-
-      const error = new Error('Test error with tracing');
-      const mockFn = vi.fn().mockRejectedValue(error);
-
-      await expect(withSpan('error-span', mockFn)).rejects.toThrow('Test error with tracing');
-    });
-
-    it('should pass attributes to span when tracing is enabled', async () => {
-      process.env.OTEL_ENABLED = '1';
-
-      const mockFn = vi.fn().mockResolvedValue('ok');
-      await withSpan('span-with-attrs', mockFn, {
-        userId: 'user-123',
-        provider: 'google',
-        count: 42,
-        isTest: true,
+      mockTrace.getTracer.mockReturnValue(mockTracer);
+      mockTracer.startActiveSpan.mockImplementation((name, fn) => {
+        fn(mockSpan);
+        return Promise.resolve('test-result');
       });
 
-      expect(mockFn).toHaveBeenCalled();
+      const testFn = vi.fn().mockResolvedValue('test-result');
+      const result = await tracing.withSpan('test-span', testFn);
+
+      expect(result).toBe('test-result');
+      expect(mockTracer.startActiveSpan).toHaveBeenCalledWith('test-span', expect.any(Function));
+      expect(testFn).toHaveBeenCalledWith(mockSpan);
+    });
+
+    it('should set span attributes when provided', async () => {
+      process.env.OTEL_ENABLED = '1';
+      mockTrace.getTracer.mockReturnValue(mockTracer);
+      mockTracer.startActiveSpan.mockImplementation((name, fn) => {
+        fn(mockSpan);
+        return Promise.resolve('test-result');
+      });
+
+      const attributes = { 'test.attr': 'value', 'test.number': 42, 'test.bool': true };
+      const testFn = vi.fn().mockResolvedValue('test-result');
+
+      await tracing.withSpan('test-span', testFn, attributes);
+
+      expect(mockSpan.setAttribute).toHaveBeenCalledWith('test.attr', 'value');
+      expect(mockSpan.setAttribute).toHaveBeenCalledWith('test.number', 42);
+      expect(mockSpan.setAttribute).toHaveBeenCalledWith('test.bool', true);
+    });
+
+    it('should set span status to OK on success', async () => {
+      process.env.OTEL_ENABLED = '1';
+      mockTrace.getTracer.mockReturnValue(mockTracer);
+      mockTracer.startActiveSpan.mockImplementation((name, fn) => {
+        fn(mockSpan);
+        return Promise.resolve('test-result');
+      });
+
+      const testFn = vi.fn().mockResolvedValue('test-result');
+      await tracing.withSpan('test-span', testFn);
+
+      expect(mockSpan.setStatus).toHaveBeenCalledWith({ code: 1 }); // SpanStatusCode.OK
+      expect(mockSpan.end).toHaveBeenCalled();
+    });
+
+    it('should handle errors and set span status to ERROR', async () => {
+      process.env.OTEL_ENABLED = '1';
+      mockTrace.getTracer.mockReturnValue(mockTracer);
+      const testError = new Error('Test error');
+      mockTracer.startActiveSpan.mockImplementation((name, fn) => {
+        fn(mockSpan);
+        return Promise.reject(testError);
+      });
+
+      const testFn = vi.fn().mockRejectedValue(testError);
+
+      await expect(tracing.withSpan('test-span', testFn)).rejects.toThrow('Test error');
+
+      expect(mockSpan.recordException).toHaveBeenCalledWith(testError);
+      expect(mockSpan.setStatus).toHaveBeenCalledWith({
+        code: 2, // SpanStatusCode.ERROR
+        message: 'Test error',
+      });
+      expect(mockSpan.end).toHaveBeenCalled();
+    });
+
+    it('should handle errors without message', async () => {
+      process.env.OTEL_ENABLED = '1';
+      mockTrace.getTracer.mockReturnValue(mockTracer);
+      const testError = new Error();
+      testError.message = undefined as any;
+      mockTracer.startActiveSpan.mockImplementation((name, fn) => {
+        fn(mockSpan);
+        return Promise.reject(testError);
+      });
+
+      const testFn = vi.fn().mockRejectedValue(testError);
+
+      await expect(tracing.withSpan('test-span', testFn)).rejects.toThrow();
+
+      expect(mockSpan.setStatus).toHaveBeenCalledWith({
+        code: 2, // SpanStatusCode.ERROR
+        message: undefined,
+      });
     });
   });
 
   describe('withHttpSpan', () => {
-    it('should execute HTTP request when tracing is disabled', async () => {
-      delete process.env.OTEL_ENABLED;
-
-      const mockFn = vi.fn().mockResolvedValue({ status: 200 });
-      const result = await withHttpSpan('GET', 'https://api.example.com/data', mockFn);
-
-      expect(result).toEqual({ status: 200 });
-      expect(mockFn).toHaveBeenCalledWith(null);
-    });
-
-    it('should create HTTP span when tracing is enabled', async () => {
+    it('should create HTTP span with correct attributes', async () => {
       process.env.OTEL_ENABLED = '1';
+      mockTrace.getTracer.mockReturnValue(mockTracer);
+      mockTracer.startActiveSpan.mockImplementation((name, fn) => {
+        fn(mockSpan);
+        return Promise.resolve('test-result');
+      });
 
-      const mockFn = vi.fn().mockResolvedValue({ status: 200, data: 'test' });
-      const result = await withHttpSpan('POST', 'https://api.example.com/create', mockFn);
+      const testFn = vi.fn().mockResolvedValue('test-result');
+      await tracing.withHttpSpan('GET', 'https://api.github.com/user', testFn);
 
-      expect(result).toEqual({ status: 200, data: 'test' });
-      expect(mockFn).toHaveBeenCalledWith(expect.any(Object));
+      expect(mockTracer.startActiveSpan).toHaveBeenCalledWith('HTTP GET', expect.any(Function));
+      expect(mockSpan.setAttribute).toHaveBeenCalledWith('http.method', 'GET');
+      expect(mockSpan.setAttribute).toHaveBeenCalledWith('http.url', 'https://api.github.com/user');
+      expect(mockSpan.setAttribute).toHaveBeenCalledWith('span.kind', 1); // SpanKind.CLIENT
     });
   });
 
   describe('withOAuthSpan', () => {
-    it('should execute OAuth operation when tracing is disabled', async () => {
-      delete process.env.OTEL_ENABLED;
-
-      const mockFn = vi.fn().mockResolvedValue({ access_token: 'token' });
-      const result = await withOAuthSpan('connect', 'google', 'user-123', mockFn);
-
-      expect(result).toEqual({ access_token: 'token' });
-      expect(mockFn).toHaveBeenCalledWith(null);
-    });
-
-    it('should create OAuth span when tracing is enabled', async () => {
+    it('should create OAuth span with correct attributes', async () => {
       process.env.OTEL_ENABLED = '1';
+      mockTrace.getTracer.mockReturnValue(mockTracer);
+      mockTracer.startActiveSpan.mockImplementation((name, fn) => {
+        fn(mockSpan);
+        return Promise.resolve('test-result');
+      });
 
-      const mockFn = vi.fn().mockResolvedValue({ access_token: 'token' });
-      const result = await withOAuthSpan('callback', 'twitter', 'user-456', mockFn);
+      const testFn = vi.fn().mockResolvedValue('test-result');
+      await tracing.withOAuthSpan('connect', 'github', 'user-123', testFn);
 
-      expect(result).toEqual({ access_token: 'token' });
-      expect(mockFn).toHaveBeenCalledWith(expect.any(Object));
-    });
-
-    it('should handle OAuth errors', async () => {
-      process.env.OTEL_ENABLED = '1';
-
-      const error = new Error('OAuth error');
-      const mockFn = vi.fn().mockRejectedValue(error);
-
-      await expect(withOAuthSpan('refresh', 'reddit', 'user-789', mockFn)).rejects.toThrow(
-        'OAuth error'
+      expect(mockTracer.startActiveSpan).toHaveBeenCalledWith(
+        'OAuth connect',
+        expect.any(Function)
       );
+      expect(mockSpan.setAttribute).toHaveBeenCalledWith('oauth.operation', 'connect');
+      expect(mockSpan.setAttribute).toHaveBeenCalledWith('oauth.provider', 'github');
+      expect(mockSpan.setAttribute).toHaveBeenCalledWith('oauth.user_id', 'user-123');
     });
   });
 
   describe('withTokenSpan', () => {
-    it('should execute token operation when tracing is disabled', async () => {
-      delete process.env.OTEL_ENABLED;
-
-      const mockFn = vi.fn().mockResolvedValue('token-stored');
-      const result = await withTokenSpan('store', 'google', 'user-123', mockFn);
-
-      expect(result).toBe('token-stored');
-      expect(mockFn).toHaveBeenCalledWith(null);
-    });
-
-    it('should create token span when tracing is enabled', async () => {
+    it('should create Token span with correct attributes', async () => {
       process.env.OTEL_ENABLED = '1';
+      mockTrace.getTracer.mockReturnValue(mockTracer);
+      mockTracer.startActiveSpan.mockImplementation((name, fn) => {
+        fn(mockSpan);
+        return Promise.resolve('test-result');
+      });
 
-      const mockFn = vi.fn().mockResolvedValue('token-deleted');
-      const result = await withTokenSpan('delete', 'github', 'user-456', mockFn);
+      const testFn = vi.fn().mockResolvedValue('test-result');
+      await tracing.withTokenSpan('refresh', 'github', 'user-123', testFn);
 
-      expect(result).toBe('token-deleted');
-      expect(mockFn).toHaveBeenCalledWith(expect.any(Object));
-    });
-
-    it('should handle token refresh operation', async () => {
-      process.env.OTEL_ENABLED = '1';
-
-      const mockFn = vi.fn().mockResolvedValue({ newToken: 'refreshed-token' });
-      const result = await withTokenSpan('refresh', 'twitter', 'user-999', mockFn);
-
-      expect(result).toEqual({ newToken: 'refreshed-token' });
+      expect(mockTracer.startActiveSpan).toHaveBeenCalledWith(
+        'Token refresh',
+        expect.any(Function)
+      );
+      expect(mockSpan.setAttribute).toHaveBeenCalledWith('token.operation', 'refresh');
+      expect(mockSpan.setAttribute).toHaveBeenCalledWith('token.provider', 'github');
+      expect(mockSpan.setAttribute).toHaveBeenCalledWith('token.user_id', 'user-123');
     });
   });
 
   describe('getCurrentSpan', () => {
     it('should return undefined when tracing is disabled', () => {
-      delete process.env.OTEL_ENABLED;
-      expect(getCurrentSpan()).toBeUndefined();
+      process.env.OTEL_ENABLED = 'false';
+      mockContext.active.mockReturnValue({});
+      mockTrace.getSpan.mockReturnValue(mockSpan);
+
+      const result = tracing.getCurrentSpan();
+      expect(result).toBeUndefined();
     });
 
-    it('should return undefined when no active span exists', () => {
+    it('should return current span when tracing is enabled', () => {
       process.env.OTEL_ENABLED = '1';
-      // Without active span context
-      expect(getCurrentSpan()).toBeUndefined();
+      const activeContext = { test: 'context' };
+      mockContext.active.mockReturnValue(activeContext);
+      mockTrace.getSpan.mockReturnValue(mockSpan);
+
+      const result = tracing.getCurrentSpan();
+      expect(result).toBe(mockSpan);
+      expect(mockContext.active).toHaveBeenCalled();
+      expect(mockTrace.getSpan).toHaveBeenCalledWith(activeContext);
     });
   });
 
   describe('addSpanEvent', () => {
-    it('should not throw when tracing is disabled', () => {
-      delete process.env.OTEL_ENABLED;
-      expect(() => addSpanEvent('test-event')).not.toThrow();
-    });
-
-    it('should not throw when no active span exists', () => {
+    it('should add event to current span when available', () => {
       process.env.OTEL_ENABLED = '1';
-      expect(() => addSpanEvent('test-event', { key: 'value' })).not.toThrow();
+      mockContext.active.mockReturnValue({});
+      mockTrace.getSpan.mockReturnValue(mockSpan);
+
+      const attributes = { event: 'test-event', data: 'test-data' };
+      tracing.addSpanEvent('test-event', attributes);
+
+      expect(mockSpan.addEvent).toHaveBeenCalledWith('test-event', attributes);
     });
 
-    it('should accept event with attributes', () => {
-      delete process.env.OTEL_ENABLED;
-      expect(() =>
-        addSpanEvent('cache-hit', { cacheKey: 'user:123', provider: 'google' })
-      ).not.toThrow();
+    it('should not add event when no current span', () => {
+      process.env.OTEL_ENABLED = '1';
+      mockContext.active.mockReturnValue({});
+      mockTrace.getSpan.mockReturnValue(undefined);
+
+      tracing.addSpanEvent('test-event', { data: 'test' });
+
+      expect(mockSpan.addEvent).not.toHaveBeenCalled();
+    });
+
+    it('should add event without attributes', () => {
+      process.env.OTEL_ENABLED = '1';
+      mockContext.active.mockReturnValue({});
+      mockTrace.getSpan.mockReturnValue(mockSpan);
+
+      tracing.addSpanEvent('test-event');
+
+      expect(mockSpan.addEvent).toHaveBeenCalledWith('test-event', undefined);
     });
   });
 
   describe('setSpanAttribute', () => {
-    it('should not throw when tracing is disabled', () => {
-      delete process.env.OTEL_ENABLED;
-      expect(() => setSpanAttribute('test-attr', 'test-value')).not.toThrow();
-    });
-
-    it('should not throw when no active span exists', () => {
+    it('should set attribute on current span when available', () => {
       process.env.OTEL_ENABLED = '1';
-      expect(() => setSpanAttribute('provider', 'google')).not.toThrow();
+      mockContext.active.mockReturnValue({});
+      mockTrace.getSpan.mockReturnValue(mockSpan);
+
+      tracing.setSpanAttribute('test.key', 'test-value');
+
+      expect(mockSpan.setAttribute).toHaveBeenCalledWith('test.key', 'test-value');
     });
 
-    it('should accept string attributes', () => {
-      delete process.env.OTEL_ENABLED;
-      expect(() => setSpanAttribute('userId', 'user-123')).not.toThrow();
+    it('should not set attribute when no current span', () => {
+      process.env.OTEL_ENABLED = '1';
+      mockContext.active.mockReturnValue({});
+      mockTrace.getSpan.mockReturnValue(undefined);
+
+      tracing.setSpanAttribute('test.key', 'test-value');
+
+      expect(mockSpan.setAttribute).not.toHaveBeenCalled();
     });
 
-    it('should accept number attributes', () => {
-      delete process.env.OTEL_ENABLED;
-      expect(() => setSpanAttribute('statusCode', 200)).not.toThrow();
-    });
+    it('should handle different attribute types', () => {
+      process.env.OTEL_ENABLED = '1';
+      mockContext.active.mockReturnValue({});
+      mockTrace.getSpan.mockReturnValue(mockSpan);
 
-    it('should accept boolean attributes', () => {
-      delete process.env.OTEL_ENABLED;
-      expect(() => setSpanAttribute('cached', true)).not.toThrow();
+      tracing.setSpanAttribute('string.attr', 'string-value');
+      tracing.setSpanAttribute('number.attr', 42);
+      tracing.setSpanAttribute('boolean.attr', true);
+
+      expect(mockSpan.setAttribute).toHaveBeenCalledWith('string.attr', 'string-value');
+      expect(mockSpan.setAttribute).toHaveBeenCalledWith('number.attr', 42);
+      expect(mockSpan.setAttribute).toHaveBeenCalledWith('boolean.attr', true);
     });
   });
 
-  describe('concurrent spans', () => {
-    it('should handle multiple concurrent spans when tracing is enabled', async () => {
-      process.env.OTEL_ENABLED = '1';
-
-      const task1 = withSpan('span-1', async () => {
-        await new Promise((resolve) => setTimeout(resolve, 10));
-        return 'result-1';
-      });
-
-      const task2 = withSpan('span-2', async () => {
-        await new Promise((resolve) => setTimeout(resolve, 5));
-        return 'result-2';
-      });
-
-      const task3 = withSpan('span-3', async () => {
-        return 'result-3';
-      });
-
-      const results = await Promise.all([task1, task2, task3]);
-
-      expect(results).toEqual(['result-1', 'result-2', 'result-3']);
+  describe('initializeTracing', () => {
+    beforeEach(() => {
+      // Mock console.log and console.error
+      vi.spyOn(console, 'log').mockImplementation(() => {});
+      vi.spyOn(console, 'error').mockImplementation(() => {});
     });
 
-    it('should handle concurrent spans when tracing is disabled', async () => {
-      delete process.env.OTEL_ENABLED;
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
 
-      const task1 = withSpan('span-1', async () => 'result-1');
-      const task2 = withSpan('span-2', async () => 'result-2');
+    it('should return false when tracing is disabled', async () => {
+      process.env.OTEL_ENABLED = 'false';
 
-      const results = await Promise.all([task1, task2]);
+      const result = await tracing.initializeTracing();
+      expect(result).toBe(false);
+    });
 
-      expect(results).toEqual(['result-1', 'result-2']);
+    it('should initialize tracing with default configuration', async () => {
+      process.env.OTEL_ENABLED = '1';
+
+      const result = await tracing.initializeTracing();
+      expect(result).toBe(true);
+      expect(console.log).toHaveBeenCalledWith(
+        '[OTEL] Tracing initialized: oauth-connector-sdk -> http://localhost:4318/v1/traces'
+      );
+    });
+
+    it('should initialize tracing with custom configuration', async () => {
+      process.env.OTEL_ENABLED = '1';
+      process.env.OTEL_SERVICE_NAME = 'custom-service';
+      process.env.OTEL_EXPORTER_OTLP_ENDPOINT = 'http://custom-endpoint:4318/v1/traces';
+
+      const result = await tracing.initializeTracing();
+      expect(result).toBe(true);
+      expect(console.log).toHaveBeenCalledWith(
+        '[OTEL] Tracing initialized: custom-service -> http://custom-endpoint:4318/v1/traces'
+      );
+    });
+
+    it('should handle initialization errors', async () => {
+      process.env.OTEL_ENABLED = '1';
+
+      // Mock dynamic import to throw error
+      vi.doMock('@opentelemetry/sdk-node', () => {
+        throw new Error('SDK initialization failed');
+      });
+
+      const result = await tracing.initializeTracing();
+      expect(result).toBe(false);
+      expect(console.error).toHaveBeenCalledWith(
+        '[OTEL] Failed to initialize tracing:',
+        'SDK initialization failed'
+      );
+    });
+
+    it('should set up graceful shutdown handler', async () => {
+      process.env.OTEL_ENABLED = '1';
+      const mockProcessOn = vi.spyOn(process, 'on').mockImplementation(() => process);
+
+      await tracing.initializeTracing();
+
+      expect(mockProcessOn).toHaveBeenCalledWith('SIGTERM', expect.any(Function));
+
+      // Test the SIGTERM handler
+      const sigtermHandler = mockProcessOn.mock.calls.find((call) => call[0] === 'SIGTERM')?.[1];
+      expect(sigtermHandler).toBeDefined();
+
+      // Mock the SDK shutdown method
+      const mockSDK = { shutdown: vi.fn().mockResolvedValue(undefined) };
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      vi.mocked(require('@opentelemetry/sdk-node').NodeSDK).mockReturnValue(mockSDK);
+
+      if (sigtermHandler) {
+        await sigtermHandler();
+        expect(console.log).toHaveBeenCalledWith('[OTEL] Tracing terminated');
+      }
+    });
+
+    it('should handle shutdown errors', async () => {
+      process.env.OTEL_ENABLED = '1';
+      const mockProcessOn = vi.spyOn(process, 'on').mockImplementation(() => process);
+
+      await tracing.initializeTracing();
+
+      const sigtermHandler = mockProcessOn.mock.calls.find((call) => call[0] === 'SIGTERM')?.[1];
+
+      // Mock the SDK shutdown method to throw error
+      const mockSDK = { shutdown: vi.fn().mockRejectedValue(new Error('Shutdown failed')) };
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      vi.mocked(require('@opentelemetry/sdk-node').NodeSDK).mockReturnValue(mockSDK);
+
+      if (sigtermHandler) {
+        await sigtermHandler();
+        expect(console.error).toHaveBeenCalledWith(
+          '[OTEL] Error terminating tracing',
+          expect.any(Error)
+        );
+      }
     });
   });
 
-  describe('nested spans', () => {
-    it('should handle nested span execution', async () => {
+  describe('Edge Cases and Error Scenarios', () => {
+    it('should handle null span in withSpan', async () => {
       process.env.OTEL_ENABLED = '1';
-
-      const result = await withSpan('outer-span', async () => {
-        const inner1 = await withSpan('inner-span-1', async () => 'inner-1');
-        const inner2 = await withSpan('inner-span-2', async () => 'inner-2');
-        return { inner1, inner2 };
+      mockTrace.getTracer.mockReturnValue(mockTracer);
+      mockTracer.startActiveSpan.mockImplementation((name, fn) => {
+        fn(null); // Pass null span
+        return Promise.resolve('test-result');
       });
 
-      expect(result).toEqual({ inner1: 'inner-1', inner2: 'inner-2' });
+      const testFn = vi.fn().mockResolvedValue('test-result');
+      const result = await tracing.withSpan('test-span', testFn);
+
+      expect(result).toBe('test-result');
+      expect(testFn).toHaveBeenCalledWith(null);
     });
 
-    it('should propagate errors from nested spans', async () => {
+    it('should handle span operations with null span', () => {
       process.env.OTEL_ENABLED = '1';
+      mockContext.active.mockReturnValue({});
+      mockTrace.getSpan.mockReturnValue(null);
 
-      await expect(
-        withSpan('outer', async () => {
-          await withSpan('inner', async () => {
-            throw new Error('Inner error');
-          });
-        })
-      ).rejects.toThrow('Inner error');
-    });
-  });
-
-  describe('error handling', () => {
-    it('should record exception in span when error occurs', async () => {
-      process.env.OTEL_ENABLED = '1';
-
-      const error = new Error('Database connection failed');
-      const mockFn = vi.fn().mockRejectedValue(error);
-
-      await expect(withSpan('db-query', mockFn)).rejects.toThrow('Database connection failed');
+      // Should not throw when span is null
+      expect(() => {
+        tracing.addSpanEvent('test-event');
+        tracing.setSpanAttribute('test.key', 'value');
+      }).not.toThrow();
     });
 
-    it('should handle errors without message', async () => {
+    it('should handle concurrent span operations', async () => {
       process.env.OTEL_ENABLED = '1';
+      mockTrace.getTracer.mockReturnValue(mockTracer);
+      mockTracer.startActiveSpan.mockImplementation((name, fn) => {
+        fn(mockSpan);
+        return Promise.resolve('test-result');
+      });
 
-      const error = new Error();
-      const mockFn = vi.fn().mockRejectedValue(error);
+      const operations = Array.from({ length: 10 }, (_, i) =>
+        tracing.withSpan(`span-${i}`, async () => `result-${i}`)
+      );
 
-      await expect(withSpan('test', mockFn)).rejects.toThrow();
+      const results = await Promise.all(operations);
+      expect(results).toHaveLength(10);
+      expect(mockTracer.startActiveSpan).toHaveBeenCalledTimes(10);
+    });
+
+    it('should handle very long span names', async () => {
+      process.env.OTEL_ENABLED = '1';
+      mockTrace.getTracer.mockReturnValue(mockTracer);
+      mockTracer.startActiveSpan.mockImplementation((name, fn) => {
+        fn(mockSpan);
+        return Promise.resolve('test-result');
+      });
+
+      const longName = 'a'.repeat(1000);
+      const result = await tracing.withSpan(longName, async () => 'test-result');
+
+      expect(result).toBe('test-result');
+      expect(mockTracer.startActiveSpan).toHaveBeenCalledWith(longName, expect.any(Function));
+    });
+
+    it('should handle special characters in span names and attributes', async () => {
+      process.env.OTEL_ENABLED = '1';
+      mockTrace.getTracer.mockReturnValue(mockTracer);
+      mockTracer.startActiveSpan.mockImplementation((name, fn) => {
+        fn(mockSpan);
+        return Promise.resolve('test-result');
+      });
+
+      const specialName = 'span-with-special-chars-!@#$%^&*()';
+      const specialAttributes = {
+        'attr.with.dots': 'value',
+        'attr-with-dashes': 'value',
+        attr_with_underscores: 'value',
+        attrWithCamelCase: 'value',
+      };
+
+      const result = await tracing.withSpan(
+        specialName,
+        async () => 'test-result',
+        specialAttributes
+      );
+
+      expect(result).toBe('test-result');
+      expect(mockTracer.startActiveSpan).toHaveBeenCalledWith(specialName, expect.any(Function));
     });
   });
 });

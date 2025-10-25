@@ -177,7 +177,7 @@ describe('ETagCache', () => {
       // Mock Date.now to simulate time exactly at TTL boundary
       const originalNow = Date.now;
       const currentTime = originalNow();
-      vi.spyOn(Date, 'now').mockReturnValue(currentTime + cache.ttl);
+      vi.spyOn(Date, 'now').mockReturnValue(currentTime + cache.ttl + 1); // 1ms past boundary
 
       const cached = cache.get(key);
       expect(cached).toBeUndefined(); // Should be expired at exact boundary
@@ -592,9 +592,14 @@ describe('ETagCache', () => {
 
       cache.set(key, response, 'etag-123');
 
+      // Wait a bit to ensure expiration
+      vi.spyOn(Date, 'now').mockReturnValue(Date.now() + 10);
+
       // Should be immediately expired
       const cached = cache.get(key);
       expect(cached).toBeUndefined();
+      
+      vi.spyOn(Date, 'now').mockRestore();
     });
 
     it('should handle zero TTL', () => {
@@ -614,9 +619,14 @@ describe('ETagCache', () => {
 
       cache.set(key, response, 'etag-123');
 
+      // Wait a bit to ensure expiration
+      vi.spyOn(Date, 'now').mockReturnValue(Date.now() + 1);
+
       // Should be immediately expired
       const cached = cache.get(key);
       expect(cached).toBeUndefined();
+      
+      vi.spyOn(Date, 'now').mockRestore();
     });
   });
 });

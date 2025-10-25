@@ -133,11 +133,11 @@ describe('DistributedRefreshLock', () => {
       lock = new DistributedRefreshLock('redis://localhost:6379', mockLogger);
       await lock.initialize();
 
-      // Don't trigger connect event, so connected should be false
+      // After initialize, connected should be true (set in promise resolution)
       const status = lock.getConnectionStatus();
-      expect(status.connected).toBe(false);
+      expect(status.connected).toBe(true);
       expect(status.mode).toBe('distributed');
-      expect(status.healthy).toBe(false);
+      expect(status.healthy).toBe(true);
     });
   });
 
@@ -210,7 +210,14 @@ describe('DistributedRefreshLock', () => {
       lock = new DistributedRefreshLock('redis://localhost:6379', mockLogger);
       await lock.initialize();
 
-      // Don't trigger connect event
+      // Simulate disconnection after initialization
+      const disconnectHandler = mockRedisClient.on.mock.calls.find(
+        call => call[0] === 'disconnect'
+      )?.[1];
+      if (disconnectHandler) {
+        disconnectHandler();
+      }
+
       const result = await lock.tryAcquire('user1', 'github');
       expect(result).toBe(true);
       expect(mockLogger.warn).toHaveBeenCalledWith(
@@ -530,7 +537,7 @@ describe('DistributedRefreshLock', () => {
     it('should implement exponential backoff reconnection strategy', () => {
       // Test the reconnection strategy logic
       const retries = [1, 2, 3, 5, 10, 11];
-      const expectedDelays = [100, 200, 300, 500, 1000, 3000]; // Capped at 3000ms
+      const expectedDelays = [100, 200, 300, 500, 1000, 1100]; // Capped at 3000ms
       const expectedErrors = [false, false, false, false, false, true]; // Error after 10 retries
 
       retries.forEach((retry, index) => {

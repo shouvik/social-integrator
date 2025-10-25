@@ -12,6 +12,10 @@ permissions:
   contents: write
   actions: read
 
+concurrency:
+  group: rc-branch
+  cancel-in-progress: true
+
 jobs:
   create-rc:
     name: Create/Update RC Branch

@@ -51,7 +51,6 @@ vi.mock('@opentelemetry/auto-instrumentations-node', () => ({
 describe('Tracing', () => {
   let mockSpan: any;
   let mockTracer: any;
-  let mockContext: any;
 
   beforeEach(async () => {
     vi.clearAllMocks();
@@ -70,10 +69,6 @@ describe('Tracing', () => {
 
     mockTracer = {
       startActiveSpan: vi.fn(),
-    };
-
-    mockContext = {
-      active: vi.fn().mockReturnValue({}),
     };
 
     const { trace, context } = await import('@opentelemetry/api');

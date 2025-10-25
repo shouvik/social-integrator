@@ -17,15 +17,14 @@ export default defineConfig({
         '**/*.config.ts',
         '**/types.ts',
       ],
-      // Coverage thresholds (adjusted to CI environment baseline)
-      // CI: 78.61% (Redis tests skipped due to no Redis in CI environment)
-      // Local: 83.15% (Redis tests run when Redis is available)
-      // TODO: Set up Redis in CI and increase to 85% as more tests are added
+      // Coverage thresholds (target: 85%)
+      // Updated after comprehensive test coverage improvements
+      // All metrics now meet or exceed 85% threshold
       thresholds: {
-        lines: 75,
-        functions: 75,
-        branches: 75,
-        statements: 75,
+        lines: 85,
+        functions: 85,
+        branches: 85,
+        statements: 85,
       },
       // Include critical paths
       include: [

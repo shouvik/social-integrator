@@ -4,7 +4,7 @@ import axios, { AxiosInstance } from 'axios';
 import * as http from 'http';
 import * as https from 'https';
 import PQueue from 'p-queue';
-import type { HttpRequestConfig, HttpResponse, RateLimitConfig, RetryConfig } from './types';
+import type { HttpCoreConfig, HttpRequestConfig, HttpResponse, RateLimitConfig } from './types';
 import type { ProviderName } from '../normalizer/types';
 import type { MetricsCollector } from '../../observability/MetricsCollector';
 import type { Logger } from '../../observability/Logger';
@@ -28,23 +28,29 @@ export class HttpCore {
   private etagCache: ETagCache;
   private metrics: MetricsCollector;
   private logger: Logger;
+  private defaultTimeout: number;
+  private keepAlive: boolean;
 
   constructor(
     private rateLimits: Record<ProviderName, RateLimitConfig>,
-    retryConfig: RetryConfig,
+    httpConfig: HttpCoreConfig,
     metrics: MetricsCollector,
     logger: Logger
   ) {
     this.metrics = metrics;
     this.logger = logger;
     this.circuitBreaker = new CircuitBreaker(logger);
-    this.retryHandler = new RetryHandler(retryConfig, logger, this.circuitBreaker);
+    this.retryHandler = new RetryHandler(httpConfig.retry, logger, this.circuitBreaker);
     this.etagCache = new ETagCache();
 
+    this.keepAlive = httpConfig.keepAlive ?? true;
+    this.defaultTimeout = httpConfig.timeout ?? 30000;
+
     this.axiosInstance = axios.create({
-      timeout: 30000,
-      httpAgent: new http.Agent({ keepAlive: true }),
-      httpsAgent: new https.Agent({ keepAlive: true }),
+      timeout: this.defaultTimeout,
+      httpAgent: new http.Agent({ keepAlive: this.keepAlive }),
+      httpsAgent: new https.Agent({ keepAlive: this.keepAlive }),
+      proxy: httpConfig.proxy ?? false,
     });
 
     this.setupInterceptors();
@@ -126,7 +132,7 @@ export class HttpCore {
               headers,
               params: config.query,
               data: config.body,
-              timeout: config.timeout,
+              timeout: config.timeout ?? this.defaultTimeout,
               validateStatus: (status) => status < 400 || status === 304,
             });
           }, provider);

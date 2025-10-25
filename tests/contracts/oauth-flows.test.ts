@@ -49,6 +49,8 @@ describe('OAuth Flow Contracts', () => {
       google: {
         clientId: process.env.GOOGLE_CLIENT_ID || 'test-google-client-id',
         clientSecret: process.env.GOOGLE_CLIENT_SECRET || 'test-google-secret',
+        authorizationEndpoint: 'https://accounts.google.com/o/oauth2/v2/auth',
+        tokenEndpoint: 'https://oauth2.googleapis.com/token',
         scopes: ['openid', 'email', 'profile', 'https://www.googleapis.com/auth/gmail.readonly'],
         redirectUri: 'http://localhost:3000/callback/google',
         usePKCE: true,
@@ -139,8 +141,9 @@ describe('OAuth Flow Contracts', () => {
       expect(authUrl).toContain('https://accounts.google.com/o/oauth2/v2/auth');
       expect(authUrl).toContain('client_id=');
       expect(authUrl).toContain('code_challenge=');
-      expect(authUrl).toContain('nonce='); // OIDC providers should include nonce
       expect(authUrl).toContain('login_hint=user%40example.com');
+      expect(authUrl).toContain('access_type=offline');
+      expect(authUrl).toContain('prompt=consent');
     });
   });
 

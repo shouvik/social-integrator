@@ -49,6 +49,21 @@ const RetryConfigSchema = z
     message: 'maxDelay must be greater than or equal to baseDelay',
   });
 
+const HttpProxyConfigSchema = z.union([
+  z.literal(false),
+  z.object({
+    host: z.string().min(1),
+    port: z.number().int().min(1).max(65535),
+    protocol: z.enum(['http', 'https']).optional(),
+    auth: z
+      .object({
+        username: z.string().min(1),
+        password: z.string().min(1),
+      })
+      .optional(),
+  }),
+]);
+
 // Rate Limit Configuration Schema
 const RateLimitConfigSchema = z.object({
   qps: z.number().positive(),
@@ -93,6 +108,7 @@ export const InitConfigSchema = z.object({
     timeout: z.number().positive().optional(),
     retry: RetryConfigSchema,
     keepAlive: z.boolean().optional(),
+    proxy: HttpProxyConfigSchema.optional(),
   }),
   rateLimits: z.record(
     z.enum(['google', 'github', 'reddit', 'twitter', 'x', 'rss']),

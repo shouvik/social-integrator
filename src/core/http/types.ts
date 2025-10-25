@@ -38,3 +38,20 @@ export interface RetryConfig {
   maxDelay: number;
   retryableStatusCodes: number[];
 }
+
+export interface HttpProxyConfig {
+  host: string;
+  port: number;
+  protocol?: 'http' | 'https';
+  auth?: {
+    username: string;
+    password: string;
+  };
+}
+
+export interface HttpCoreConfig {
+  timeout?: number;
+  keepAlive?: boolean;
+  retry: RetryConfig;
+  proxy?: false | HttpProxyConfig;
+}

@@ -119,4 +119,321 @@ describe('Google OAuth Flow Contract', () => {
     expect(items[0].source).toBe('google');
     expect(items[0].title).toBe('Test Email');
   });
+
+  it('should fetch Google Calendar events', async () => {
+    const authUrl = await sdk.connect('google', testUserId);
+    const url = new URL(authUrl);
+    const actualState = url.searchParams.get('state')!;
+
+    nock('https://oauth2.googleapis.com').post('/token').reply(200, {
+      access_token: 'ya29.calendar_access_token',
+      refresh_token: 'ya29.calendar_refresh_token',
+      token_type: 'Bearer',
+      expires_in: 3600,
+      scope: 'https://www.googleapis.com/auth/calendar.readonly',
+    });
+
+    const callbackParams = new URLSearchParams({ code: 'test_code', state: actualState });
+    await sdk.handleCallback('google', testUserId, callbackParams);
+
+    // Mock Calendar API call
+    nock('https://www.googleapis.com')
+      .get('/calendar/v3/calendars/primary/events')
+      .query(true) // Accept any query params
+      .reply(200, {
+        items: [
+          {
+            id: 'event-123',
+            summary: 'Team Meeting',
+            description: 'Weekly sync meeting',
+            start: {
+              dateTime: '2025-01-20T10:00:00Z',
+              timeZone: 'UTC',
+            },
+            end: {
+              dateTime: '2025-01-20T11:00:00Z',
+              timeZone: 'UTC',
+            },
+            htmlLink: 'https://calendar.google.com/event?eid=event-123',
+          },
+        ],
+      });
+
+    const items = await sdk.fetch('google', testUserId, { service: 'calendar', limit: 20 });
+
+    expect(items).toHaveLength(1);
+    expect(items[0].source).toBe('google');
+    expect(items[0].title).toBe('Team Meeting');
+    expect(items[0].metadata?.service).toBe('calendar');
+  });
+
+  it('should handle recurring calendar events', async () => {
+    const authUrl = await sdk.connect('google', testUserId);
+    const url = new URL(authUrl);
+    const actualState = url.searchParams.get('state')!;
+
+    nock('https://oauth2.googleapis.com').post('/token').reply(200, {
+      access_token: 'ya29.token',
+      token_type: 'Bearer',
+      expires_in: 3600,
+    });
+
+    const callbackParams = new URLSearchParams({ code: 'test_code', state: actualState });
+    await sdk.handleCallback('google', testUserId, callbackParams);
+
+    // Mock recurring event
+    nock('https://www.googleapis.com')
+      .get('/calendar/v3/calendars/primary/events')
+      .query((query) => query.singleEvents === 'true')
+      .reply(200, {
+        items: [
+          {
+            id: 'event-recurring-1',
+            summary: 'Daily Standup',
+            recurrence: ['RRULE:FREQ=DAILY;COUNT=5'],
+            start: {
+              dateTime: '2025-01-20T09:00:00Z',
+              timeZone: 'UTC',
+            },
+            end: {
+              dateTime: '2025-01-20T09:15:00Z',
+              timeZone: 'UTC',
+            },
+            htmlLink: 'https://calendar.google.com/event?eid=event-recurring-1',
+          },
+        ],
+      });
+
+    const items = await sdk.fetch('google', testUserId, { service: 'calendar' });
+
+    expect(items).toHaveLength(1);
+    expect(items[0].title).toBe('Daily Standup');
+  });
+
+  it('should handle calendar events with all-day dates', async () => {
+    const authUrl = await sdk.connect('google', testUserId);
+    const url = new URL(authUrl);
+    const actualState = url.searchParams.get('state')!;
+
+    nock('https://oauth2.googleapis.com').post('/token').reply(200, {
+      access_token: 'ya29.token',
+      token_type: 'Bearer',
+      expires_in: 3600,
+    });
+
+    const callbackParams = new URLSearchParams({ code: 'test_code', state: actualState });
+    await sdk.handleCallback('google', testUserId, callbackParams);
+
+    // Mock all-day event
+    nock('https://www.googleapis.com')
+      .get('/calendar/v3/calendars/primary/events')
+      .query(true)
+      .reply(200, {
+        items: [
+          {
+            id: 'event-allday-1',
+            summary: 'Company Holiday',
+            start: {
+              date: '2025-01-25', // All-day event uses 'date' not 'dateTime'
+            },
+            end: {
+              date: '2025-01-26',
+            },
+            htmlLink: 'https://calendar.google.com/event?eid=event-allday-1',
+          },
+        ],
+      });
+
+    const items = await sdk.fetch('google', testUserId, { service: 'calendar' });
+
+    expect(items).toHaveLength(1);
+    expect(items[0].title).toBe('Company Holiday');
+  });
+
+  it('should handle empty calendar response', async () => {
+    const authUrl = await sdk.connect('google', testUserId);
+    const url = new URL(authUrl);
+    const actualState = url.searchParams.get('state')!;
+
+    nock('https://oauth2.googleapis.com').post('/token').reply(200, {
+      access_token: 'ya29.token',
+      token_type: 'Bearer',
+      expires_in: 3600,
+    });
+
+    const callbackParams = new URLSearchParams({ code: 'test_code', state: actualState });
+    await sdk.handleCallback('google', testUserId, callbackParams);
+
+    nock('https://www.googleapis.com')
+      .get('/calendar/v3/calendars/primary/events')
+      .query(true)
+      .reply(200, {
+        items: [],
+      });
+
+    const items = await sdk.fetch('google', testUserId, { service: 'calendar' });
+
+    expect(items).toHaveLength(0);
+  });
+
+  it('should handle calendar API errors', async () => {
+    const authUrl = await sdk.connect('google', testUserId);
+    const url = new URL(authUrl);
+    const actualState = url.searchParams.get('state')!;
+
+    nock('https://oauth2.googleapis.com').post('/token').reply(200, {
+      access_token: 'ya29.token',
+      token_type: 'Bearer',
+      expires_in: 3600,
+    });
+
+    const callbackParams = new URLSearchParams({ code: 'test_code', state: actualState });
+    await sdk.handleCallback('google', testUserId, callbackParams);
+
+    nock('https://www.googleapis.com')
+      .get('/calendar/v3/calendars/primary/events')
+      .query(true)
+      .reply(403, {
+        error: {
+          code: 403,
+          message: 'Insufficient Permission',
+          errors: [
+            {
+              domain: 'global',
+              reason: 'insufficientPermissions',
+              message: 'Insufficient Permission',
+            },
+          ],
+        },
+      });
+
+    await expect(sdk.fetch('google', testUserId, { service: 'calendar' })).rejects.toThrow();
+  });
+
+  it('should use google-calendar mapper for calendar events', async () => {
+    const authUrl = await sdk.connect('google', testUserId);
+    const url = new URL(authUrl);
+    const actualState = url.searchParams.get('state')!;
+
+    nock('https://oauth2.googleapis.com').post('/token').reply(200, {
+      access_token: 'ya29.token',
+      token_type: 'Bearer',
+      expires_in: 3600,
+    });
+
+    const callbackParams = new URLSearchParams({ code: 'test_code', state: actualState });
+    await sdk.handleCallback('google', testUserId, callbackParams);
+
+    nock('https://www.googleapis.com')
+      .get('/calendar/v3/calendars/primary/events')
+      .query(true)
+      .reply(200, {
+        items: [
+          {
+            id: 'cal-event',
+            summary: 'Test Calendar Event',
+            start: { dateTime: '2025-01-22T14:00:00Z' },
+            end: { dateTime: '2025-01-22T15:00:00Z' },
+            htmlLink: 'https://calendar.google.com/event?eid=cal-event',
+          },
+        ],
+      });
+
+    const items = await sdk.fetch('google', testUserId, { service: 'calendar' });
+
+    // Verify it uses google source with calendar service metadata
+    expect(items[0].source).toBe('google');
+    expect(items[0].metadata?.service).toBe('calendar');
+  });
+
+  it('should throw error for unsupported Google service', async () => {
+    const authUrl = await sdk.connect('google', testUserId);
+    const url = new URL(authUrl);
+    const actualState = url.searchParams.get('state')!;
+
+    nock('https://oauth2.googleapis.com').post('/token').reply(200, {
+      access_token: 'ya29.token',
+      token_type: 'Bearer',
+      expires_in: 3600,
+    });
+
+    const callbackParams = new URLSearchParams({ code: 'test_code', state: actualState });
+    await sdk.handleCallback('google', testUserId, callbackParams);
+
+    // Test unsupported service
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await expect(sdk.fetch('google', testUserId, { service: 'drive' as any })).rejects.toThrow(
+      'Unsupported Google service: drive'
+    );
+  });
+
+  it('should use default limit when not specified for Gmail', async () => {
+    const authUrl = await sdk.connect('google', testUserId);
+    const url = new URL(authUrl);
+    const actualState = url.searchParams.get('state')!;
+
+    nock('https://oauth2.googleapis.com').post('/token').reply(200, {
+      access_token: 'ya29.token',
+      token_type: 'Bearer',
+      expires_in: 3600,
+    });
+
+    const callbackParams = new URLSearchParams({ code: 'test_code', state: actualState });
+    await sdk.handleCallback('google', testUserId, callbackParams);
+
+    nock('https://gmail.googleapis.com')
+      .get('/gmail/v1/users/me/messages')
+      .query((query) => query.maxResults === '20') // Default limit
+      .reply(200, { messages: [] });
+
+    const items = await sdk.fetch('google', testUserId, { service: 'gmail' });
+    expect(items).toHaveLength(0);
+  });
+
+  it('should use default query when not specified for Gmail', async () => {
+    const authUrl = await sdk.connect('google', testUserId);
+    const url = new URL(authUrl);
+    const actualState = url.searchParams.get('state')!;
+
+    nock('https://oauth2.googleapis.com').post('/token').reply(200, {
+      access_token: 'ya29.token',
+      token_type: 'Bearer',
+      expires_in: 3600,
+    });
+
+    const callbackParams = new URLSearchParams({ code: 'test_code', state: actualState });
+    await sdk.handleCallback('google', testUserId, callbackParams);
+
+    nock('https://gmail.googleapis.com')
+      .get('/gmail/v1/users/me/messages')
+      .query((query) => query.q === 'is:unread') // Default query
+      .reply(200, { messages: [] });
+
+    const items = await sdk.fetch('google', testUserId, { service: 'gmail' });
+    expect(items).toHaveLength(0);
+  });
+
+  it('should use default service (gmail) when not specified', async () => {
+    const authUrl = await sdk.connect('google', testUserId);
+    const url = new URL(authUrl);
+    const actualState = url.searchParams.get('state')!;
+
+    nock('https://oauth2.googleapis.com').post('/token').reply(200, {
+      access_token: 'ya29.token',
+      token_type: 'Bearer',
+      expires_in: 3600,
+    });
+
+    const callbackParams = new URLSearchParams({ code: 'test_code', state: actualState });
+    await sdk.handleCallback('google', testUserId, callbackParams);
+
+    nock('https://gmail.googleapis.com')
+      .get('/gmail/v1/users/me/messages')
+      .query(true)
+      .reply(200, { messages: [] });
+
+    // No service specified - should default to gmail
+    const items = await sdk.fetch('google', testUserId);
+    expect(items).toHaveLength(0);
+  });
 });

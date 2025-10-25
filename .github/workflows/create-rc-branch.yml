@@ -1,0 +1,229 @@
+name: Create RC Branch
+
+on:
+  push:
+    branches: [main]
+
+env:
+  CI: true
+  RC_BRANCH: rc
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  create-rc:
+    name: Create/Update RC Branch
+    runs-on: ubuntu-latest
+    # Only run on merged PRs, not direct pushes
+    if: github.event.head_commit.message != 'Initial commit' && github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout main branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npm test
+        continue-on-error: false
+
+      - name: Build TypeScript
+        run: npm run build
+
+      - name: Generate JSON Schema
+        run: npm run generate:schema
+
+      - name: Verify build artifacts
+        run: |
+          echo "Verifying build artifacts..."
+          if [ ! -d "dist" ]; then
+            echo "Error: dist directory not found"
+            exit 1
+          fi
+
+          if [ ! -f "dist/index.js" ]; then
+            echo "Error: dist/index.js not found"
+            exit 1
+          fi
+
+          if [ ! -f "dist/index.d.ts" ]; then
+            echo "Error: dist/index.d.ts not found"
+            exit 1
+          fi
+
+          if [ ! -f "src/core/normalizer/schema.json" ]; then
+            echo "Error: schema.json not found"
+            exit 1
+          fi
+
+          echo "All build artifacts verified successfully"
+
+          # Show dist contents
+          echo "Contents of dist directory:"
+          ls -la dist/
+
+          # Show dist size
+          echo "Size of dist directory:"
+          du -sh dist/
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Create RC branch
+        run: |
+          echo "Creating/updating RC branch..."
+
+          # Check if RC branch exists remotely
+          if git ls-remote --heads origin ${{ env.RC_BRANCH }} | grep -q ${{ env.RC_BRANCH }}; then
+            echo "RC branch exists remotely, fetching..."
+            git fetch origin ${{ env.RC_BRANCH }}
+            git checkout -b ${{ env.RC_BRANCH }} origin/${{ env.RC_BRANCH }} || git checkout ${{ env.RC_BRANCH }}
+          else
+            echo "RC branch does not exist, creating new branch..."
+            git checkout -b ${{ env.RC_BRANCH }}
+          fi
+
+          # Reset RC branch to current main
+          git reset --hard origin/main
+
+          echo "RC branch prepared successfully"
+
+      - name: Prepare RC branch files
+        run: |
+          echo "Preparing files for RC branch..."
+
+          # Create a clean commit with built files
+          git add -f dist/
+          git add -f src/core/normalizer/schema.json
+          git add package.json
+          git add README.md
+          git add LICENSE 2>/dev/null || echo "LICENSE file not found, skipping"
+          git add .releaserc.json 2>/dev/null || echo ".releaserc.json not found, skipping"
+
+          # Check if there are changes to commit
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            echo "Committing built artifacts..."
+            git commit -m "chore(rc): update RC branch with built artifacts from main@${{ github.sha }}
+
+            Build date: $(date -u +'%Y-%m-%d %H:%M:%S UTC')
+            Main branch SHA: ${{ github.sha }}
+            Triggered by: ${{ github.event.head_commit.message }}
+
+            This commit contains pre-built binaries for easy installation:
+            npm install github:${{ github.repository }}#rc"
+          fi
+
+      - name: Push to RC branch
+        run: |
+          echo "Pushing to RC branch..."
+          git push -f origin ${{ env.RC_BRANCH }}
+          echo "RC branch updated successfully"
+
+      - name: Generate summary
+        run: |
+          echo "## RC Branch Updated Successfully" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "The \`${{ env.RC_BRANCH }}\` branch has been updated with pre-built binaries." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Installation" >> $GITHUB_STEP_SUMMARY
+          echo '```bash' >> $GITHUB_STEP_SUMMARY
+          echo "npm install github:${{ github.repository }}#${{ env.RC_BRANCH }}" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Build Details" >> $GITHUB_STEP_SUMMARY
+          echo "- **Main SHA**: \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Build Date**: $(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
+          echo "- **Triggered By**: ${{ github.event.head_commit.message }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Artifacts Included" >> $GITHUB_STEP_SUMMARY
+          echo "- \`dist/\` - Compiled TypeScript" >> $GITHUB_STEP_SUMMARY
+          echo "- \`src/core/normalizer/schema.json\` - Generated JSON Schema" >> $GITHUB_STEP_SUMMARY
+          echo "- \`package.json\` - Package metadata" >> $GITHUB_STEP_SUMMARY
+          echo "- \`README.md\` - Documentation" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Links" >> $GITHUB_STEP_SUMMARY
+          echo "- [View RC Branch](https://github.com/${{ github.repository }}/tree/${{ env.RC_BRANCH }})" >> $GITHUB_STEP_SUMMARY
+          echo "- [Compare with Main](https://github.com/${{ github.repository }}/compare/main...${{ env.RC_BRANCH }})" >> $GITHUB_STEP_SUMMARY
+
+      - name: Create commit comment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const message = `## RC Branch Updated Successfully
+
+            The \`${{ env.RC_BRANCH }}\` branch has been updated with pre-built binaries.
+
+            ### Installation
+            \`\`\`bash
+            npm install github:${{ github.repository }}#${{ env.RC_BRANCH }}
+            \`\`\`
+
+            ### Build Details
+            - **Main SHA**: \`${{ github.sha }}\`
+            - **Build Date**: ${new Date().toISOString()}
+            - **Workflow Run**: [View Logs](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
+
+            ### Links
+            - [View RC Branch](https://github.com/${{ github.repository }}/tree/${{ env.RC_BRANCH }})
+            - [Compare with Main](https://github.com/${{ github.repository }}/compare/main...${{ env.RC_BRANCH }})
+            `;
+
+            github.rest.repos.createCommitComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              commit_sha: context.sha,
+              body: message
+            });
+
+  notify-failure:
+    name: Notify Failure
+    runs-on: ubuntu-latest
+    needs: create-rc
+    if: failure()
+
+    steps:
+      - name: Create failure comment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const message = `## RC Branch Update Failed
+
+            The RC branch creation/update workflow failed. Please check the logs for details.
+
+            ### Workflow Run
+            [View Logs](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
+
+            ### Common Issues
+            - **Tests Failed**: Ensure all tests pass locally before merging to main
+            - **Build Failed**: Check for TypeScript compilation errors
+            - **Permission Issues**: Verify GITHUB_TOKEN has write permissions
+            - **Git Conflicts**: RC branch may have conflicts with main
+
+            ### Next Steps
+            1. Review the workflow logs
+            2. Fix any issues identified
+            3. Re-run the workflow or merge a fix to main
+            `;
+
+            github.rest.repos.createCommitComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              commit_sha: context.sha,
+              body: message
+            });

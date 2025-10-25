@@ -1,0 +1,68 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/oauth-connector-sdk/normalized-item",
+  "title": "NormalizedItem",
+  "description": "Normalized data format for all OAuth providers (Google, GitHub, Reddit, Twitter, RSS)",
+  "version": "1.0.0",
+  "$ref": "#/definitions/NormalizedItem",
+  "definitions": {
+    "NormalizedItem": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "source": {
+          "type": "string"
+        },
+        "externalId": {
+          "type": "string"
+        },
+        "userId": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "bodyText": {
+          "type": "string"
+        },
+        "url": {
+          "type": "string",
+          "format": "uri"
+        },
+        "author": {
+          "type": "string"
+        },
+        "publishedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "metadata": {
+          "type": "object",
+          "additionalProperties": {}
+        }
+      },
+      "required": ["id", "source", "externalId", "userId"],
+      "additionalProperties": false
+    }
+  },
+  "examples": [
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440000",
+      "source": "github",
+      "externalId": "123456789",
+      "userId": "user-123",
+      "title": "Example Repository",
+      "bodyText": "A repository demonstrating OAuth integration",
+      "url": "https://github.com/user/repo",
+      "author": "username",
+      "publishedAt": "2024-01-15T10:30:00Z",
+      "metadata": {
+        "stars": 42,
+        "language": "TypeScript"
+      }
+    }
+  ]
+}
